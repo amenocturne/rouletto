@@ -1,12 +1,6 @@
 import * as PIXI from "pixi.js";
 import { CRTFilter, GlowFilter } from "pixi-filters";
-import type {
-	ClientMessage,
-	GameState,
-	Phase,
-	Player,
-	ServerMessage,
-} from "../shared/types";
+import type { ClientMessage, GameState, Phase, Player, ServerMessage } from "../shared/types";
 
 // State management
 let currentState: GameState | null = null;
@@ -86,9 +80,7 @@ const playRevealSound = (): void => {
 
 // WebSocket connection
 const connect = (): void => {
-	const submitBtn = document.querySelector(
-		"#join-form button",
-	) as HTMLButtonElement | null;
+	const submitBtn = document.querySelector("#join-form button") as HTMLButtonElement | null;
 	if (submitBtn) submitBtn.disabled = true;
 
 	ws = new WebSocket(`ws://${window.location.host}`);
@@ -344,8 +336,7 @@ const spinWheel = (winnerId: string): void => {
 	const randomOffset = (Math.random() - 0.5) * segmentAngle * 0.6;
 
 	// Winner's segment center is at: winnerIndex * segmentAngle + segmentAngle/2
-	const winnerSegmentCenter =
-		winnerIndex * segmentAngle + segmentAngle / 2 + randomOffset;
+	const winnerSegmentCenter = winnerIndex * segmentAngle + segmentAngle / 2 + randomOffset;
 
 	// The wheel needs to rotate so the winner segment aligns with the pointer at top
 	// If winner is at angle θ from top, we need to rotate by (2π - θ) to bring it to top
@@ -555,9 +546,7 @@ const renderResultOverlay = (): void => {
 	if (!winner) return;
 
 	// Find players who guessed correctly
-	const correctGuessers = currentState.players.filter(
-		(p) => p.bet === currentState.winner,
-	);
+	const correctGuessers = currentState.players.filter((p) => p.bet === currentState.winner);
 
 	// Check if current player is host
 	const me = currentState.players.find((p) => p.id === myPlayerId);

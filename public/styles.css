@@ -107,7 +107,10 @@ button {
 	letter-spacing: 0.05em;
 	color: #fff;
 	cursor: pointer;
-	transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+	transition:
+		background 0.2s,
+		transform 0.2s,
+		box-shadow 0.2s;
 }
 
 button:hover {

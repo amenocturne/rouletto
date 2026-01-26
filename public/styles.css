@@ -33,7 +33,7 @@
 	--text-muted: #c4b99a;
 
 	/* Fonts */
-	--font-display: "Cinzel", serif;
+	--font-display: "Press Start 2P", cursive;
 	--font-body: "Roboto", sans-serif;
 
 	/* Card styling */
@@ -63,9 +63,9 @@ body::before {
 	inset: 0;
 	background:
 		radial-gradient(ellipse at center, var(--felt-medium) 0%, var(--felt-dark) 70%),
-		url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='2.5' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-	background-blend-mode: overlay;
-	opacity: 0.85;
+		url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='4' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+	background-blend-mode: soft-light;
+	opacity: 0.92;
 	pointer-events: none;
 	z-index: -2;
 }

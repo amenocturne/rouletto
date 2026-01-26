@@ -732,10 +732,12 @@ const spinWheel = (winnerId: string): void => {
 	// The wheel needs to rotate so the winner segment aligns with the pointer at top
 	// If winner is at angle theta from top, we need to rotate by (2pi - theta) to bring it to top
 	const targetAngle = 2 * Math.PI - winnerSegmentCenter;
-	const totalRotation = EXTRA_ROTATIONS * 2 * Math.PI + targetAngle;
 
-	// Animation state - normalize to prevent accumulated rotation from becoming very large
-	const startRotation = wheelContainer.rotation % (2 * Math.PI);
+	// Calculate rotation needed from current position to reach target
+	const startRotation = wheelContainer.rotation;
+	let rotationToTarget = targetAngle - (startRotation % (2 * Math.PI));
+	if (rotationToTarget < 0) rotationToTarget += 2 * Math.PI;
+	const totalRotation = EXTRA_ROTATIONS * 2 * Math.PI + rotationToTarget;
 	const startTime = performance.now();
 	const container = wheelContainer; // Capture reference for closure
 

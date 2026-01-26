@@ -1,6 +1,6 @@
 import * as PIXI from "pixi.js";
 import { CRTFilter, GlowFilter } from "pixi-filters";
-import type { Candidate, ClientMessage, GameState, Phase, ServerMessage } from "../shared/types";
+import type { Candidate, ClientMessage, GameState, ServerMessage } from "../shared/types";
 
 // State management
 let currentState: GameState | null = null;
@@ -299,7 +299,6 @@ const showJoinScreen = (): void => {
 				<div class="game-left">
 					<div id="wheel-container"></div>
 					<div id="action-controls"></div>
-					<div id="phase-indicator"></div>
 					<div id="countdown"></div>
 				</div>
 				<div class="game-right">
@@ -929,25 +928,6 @@ const initPixi = async (): Promise<void> => {
 	drawPointer();
 };
 
-// Get human-readable phase text
-const getPhaseText = (phase: Phase): string => {
-	switch (phase) {
-		case "waiting":
-			if (currentState && currentState.candidates.length > 0) {
-				return isAdmin ? "Ready to start" : "Waiting for admin...";
-			}
-			return "Waiting for candidates...";
-		case "betting":
-			return "Place your bets!";
-		case "spinning":
-			return "Spinning...";
-		case "result":
-			return "Result!";
-		default:
-			return phase;
-	}
-};
-
 // Render results overlay with flying card animation
 const renderResultOverlay = (): void => {
 	const overlay = document.getElementById("result-overlay");
@@ -1044,12 +1024,6 @@ const render = (): void => {
 			lastCandidatesJson = candidatesJson;
 			drawWheel(currentState.candidates);
 		}
-	}
-
-	// Update phase indicator
-	const phaseIndicator = document.getElementById("phase-indicator");
-	if (phaseIndicator) {
-		phaseIndicator.textContent = getPhaseText(currentState.phase);
 	}
 
 	// Show/hide admin badge

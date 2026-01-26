@@ -1367,17 +1367,6 @@ button.loading::after {
 	align-items: flex-start;
 }
 
-#phase-indicator {
-	font-size: 0.85rem;
-	text-align: center;
-	padding: 0.5rem 1rem;
-	font-family: var(--font-display);
-	text-transform: uppercase;
-	letter-spacing: 0.1em;
-	color: var(--brass-light);
-	min-height: 2rem;
-}
-
 /* Betting indicator */
 .bet-indicator {
 	font-size: 0.875rem;

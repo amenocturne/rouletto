@@ -1,12 +1,14 @@
 import { resolve } from "node:path";
 import type { ServerWebSocket } from "bun";
 import type {
+	AddCandidatesMessage,
 	ClientMessage,
 	CreateRoomMessage,
 	ErrorMessage,
 	JoinMessage,
 	PlaceBetMessage,
 	PlaySoundMessage,
+	RemoveCandidateMessage,
 	Room,
 	RoomCreatedMessage,
 	RoomErrorMessage,
@@ -15,14 +17,16 @@ import type {
 	StateMessage,
 } from "../shared/types";
 import {
-	addPlayer,
+	addCandidates,
+	addSpectator,
 	canPlaceBet,
 	canReset,
 	canSpin,
 	canStartBetting,
 	createInitialState,
 	placeBet,
-	removePlayer,
+	removeCandidate,
+	removeSpectator,
 	resetGame,
 	selectRandomWinner,
 	setResult,
@@ -30,13 +34,13 @@ import {
 	startSpinning,
 } from "./game";
 
-// WebSocket data type - stores player ID and room ID for each connection
+// WebSocket data type - stores spectator ID and room ID for each connection
 type WebSocketData = {
-	readonly playerId: string;
+	readonly spectatorId: string;
 	readonly roomId: string | null;
 };
 
-// Store active WebSocket connections: playerId -> WebSocket
+// Store active WebSocket connections: spectatorId -> WebSocket
 const connections = new Map<string, ServerWebSocket<WebSocketData>>();
 
 // Store rooms: roomId -> Room
@@ -80,6 +84,12 @@ const parseClientMessage = (raw: string): ClientMessage | null => {
 				return msg as ClientMessage;
 			case "reset":
 				return msg as ClientMessage;
+			case "addCandidates":
+				if (typeof msg.names !== "string") return null;
+				return msg as AddCandidatesMessage;
+			case "removeCandidate":
+				if (typeof msg.candidateId !== "string") return null;
+				return msg as RemoveCandidateMessage;
 			default:
 				return null;
 		}
@@ -108,8 +118,8 @@ const broadcastState = (roomId: string): void => {
 		const msg: StateMessage = {
 			type: "state",
 			state: room.gameState,
-			playerId: ws.data.playerId,
-			isAdmin: ws.data.playerId === room.adminId,
+			spectatorId: ws.data.spectatorId,
+			isAdmin: ws.data.spectatorId === room.adminId,
 		};
 		try {
 			ws.send(JSON.stringify(msg));
@@ -176,7 +186,7 @@ const updateRoomState = (roomId: string, updater: (room: Room) => Room): void =>
 
 // Handle client messages
 const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessage): void => {
-	const playerId = ws.data.playerId;
+	const spectatorId = ws.data.spectatorId;
 	const roomId = ws.data.roomId;
 
 	// Handle createRoom - doesn't require being in a room
@@ -184,17 +194,17 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 		const newRoomId = generateRoomId();
 		const newRoom: Room = {
 			id: newRoomId,
-			adminId: playerId,
+			adminId: spectatorId,
 			gameState: createInitialState(),
 		};
 		rooms.set(newRoomId, newRoom);
 
 		// Update WebSocket data with room ID
-		(ws.data as { playerId: string; roomId: string | null }).roomId = newRoomId;
+		(ws.data as { spectatorId: string; roomId: string | null }).roomId = newRoomId;
 
 		const response: RoomCreatedMessage = { type: "roomCreated", roomId: newRoomId };
 		ws.send(JSON.stringify(response));
-		console.log(`Room created: ${newRoomId} by player ${playerId}`);
+		console.log(`Room created: ${newRoomId} by spectator ${spectatorId}`);
 		return;
 	}
 
@@ -210,10 +220,12 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 		return;
 	}
 
-	// For non-join messages, verify player has joined
+	const isAdmin = spectatorId === room.adminId;
+
+	// For non-join messages, verify spectator has joined
 	if (message.type !== "join") {
-		const playerExists = room.gameState.players.some((p) => p.id === playerId);
-		if (!playerExists) {
+		const spectatorExists = room.gameState.spectators.some((s) => s.id === spectatorId);
+		if (!spectatorExists) {
 			sendError(ws, "You must join the game first");
 			return;
 		}
@@ -221,37 +233,74 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 
 	switch (message.type) {
 		case "join": {
-			// Create player and add to state
-			const player = {
-				id: playerId,
+			// Create spectator and add to state
+			const spectator = {
+				id: spectatorId,
 				name: message.name,
 				bet: null,
-				isHost: false, // addPlayer will set this to true if first player
 			};
 			updateRoomState(roomId, (r) => ({
 				...r,
-				gameState: addPlayer(r.gameState, player),
+				gameState: addSpectator(r.gameState, spectator),
 			}));
 			broadcastState(roomId);
 			break;
 		}
 
 		case "placeBet": {
-			if (!canPlaceBet(room.gameState, playerId)) {
+			if (!canPlaceBet(room.gameState, spectatorId)) {
 				sendError(ws, "Cannot place bet at this time");
 				return;
 			}
 			updateRoomState(roomId, (r) => ({
 				...r,
-				gameState: placeBet(r.gameState, playerId, message.targetId),
+				gameState: placeBet(r.gameState, spectatorId, message.targetId),
+			}));
+			broadcastState(roomId);
+			break;
+		}
+
+		case "addCandidates": {
+			if (!isAdmin) {
+				sendError(ws, "Only the admin can add candidates");
+				return;
+			}
+			if (room.gameState.phase !== "waiting") {
+				sendError(ws, "Can only add candidates during waiting phase");
+				return;
+			}
+			updateRoomState(roomId, (r) => ({
+				...r,
+				gameState: addCandidates(r.gameState, message.names),
+			}));
+			broadcastState(roomId);
+			break;
+		}
+
+		case "removeCandidate": {
+			if (!isAdmin) {
+				sendError(ws, "Only the admin can remove candidates");
+				return;
+			}
+			if (room.gameState.phase !== "waiting") {
+				sendError(ws, "Can only remove candidates during waiting phase");
+				return;
+			}
+			updateRoomState(roomId, (r) => ({
+				...r,
+				gameState: removeCandidate(r.gameState, message.candidateId),
 			}));
 			broadcastState(roomId);
 			break;
 		}
 
 		case "startBetting": {
-			if (!canStartBetting(room.gameState, playerId)) {
-				sendError(ws, "Only the host can start betting during waiting phase");
+			if (!isAdmin) {
+				sendError(ws, "Only the admin can start betting");
+				return;
+			}
+			if (!canStartBetting(room.gameState)) {
+				sendError(ws, "Cannot start betting - need candidates");
 				return;
 			}
 			const bettingEndsAt = Date.now() + BETTING_DURATION_MS;
@@ -264,8 +313,12 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 		}
 
 		case "spin": {
-			if (!canSpin(room.gameState, playerId)) {
-				sendError(ws, "Only the host can spin during betting phase");
+			if (!isAdmin) {
+				sendError(ws, "Only the admin can spin the wheel");
+				return;
+			}
+			if (!canSpin(room.gameState)) {
+				sendError(ws, "Cannot spin - not in betting phase");
 				return;
 			}
 
@@ -279,10 +332,10 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 			const updatedRoom = rooms.get(roomId);
 			if (!updatedRoom) return;
 
-			// Select random winner
-			const winnerId = selectRandomWinner(updatedRoom.gameState.players, Math.random());
+			// Select random winner from candidates
+			const winnerId = selectRandomWinner(updatedRoom.gameState.candidates, Math.random());
 			if (winnerId === null) {
-				sendError(ws, "Cannot spin with no players");
+				sendError(ws, "Cannot spin with no candidates");
 				return;
 			}
 
@@ -311,14 +364,14 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 				if (!currentRoom) return;
 
 				// Check if winner still exists before setting result
-				const winnerExists = currentRoom.gameState.players.some((p) => p.id === winnerId);
+				const winnerExists = currentRoom.gameState.candidates.some((c) => c.id === winnerId);
 				if (winnerExists) {
 					updateRoomState(roomId, (r) => ({
 						...r,
 						gameState: setResult(r.gameState, winnerId),
 					}));
 				} else {
-					// Winner disconnected - reset to waiting phase
+					// Winner candidate was removed - reset to waiting phase
 					updateRoomState(roomId, (r) => ({
 						...r,
 						gameState: resetGame(r.gameState),
@@ -331,8 +384,12 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 		}
 
 		case "reset": {
-			if (!canReset(room.gameState, playerId)) {
-				sendError(ws, "Only the host can reset during result phase");
+			if (!isAdmin) {
+				sendError(ws, "Only the admin can reset the game");
+				return;
+			}
+			if (!canReset(room.gameState)) {
+				sendError(ws, "Cannot reset - not in result phase");
 				return;
 			}
 
@@ -393,12 +450,12 @@ const server = Bun.serve<WebSocketData>({
 
 		// Try to upgrade to WebSocket for /ws path or any connection requesting upgrade
 		if (req.headers.get("upgrade") === "websocket") {
-			const playerId = crypto.randomUUID();
+			const spectatorId = crypto.randomUUID();
 			// Extract room ID from query params if present
 			const roomId = url.searchParams.get("room")?.toLowerCase() ?? null;
 
 			const success = server.upgrade(req, {
-				data: { playerId, roomId },
+				data: { spectatorId, roomId },
 			});
 			if (success) {
 				return undefined;
@@ -447,10 +504,10 @@ const server = Bun.serve<WebSocketData>({
 
 	websocket: {
 		open(ws) {
-			const playerId = ws.data.playerId;
+			const spectatorId = ws.data.spectatorId;
 			const roomId = ws.data.roomId;
-			connections.set(playerId, ws);
-			console.log(`Client connected: ${playerId}${roomId ? ` to room ${roomId}` : ""}`);
+			connections.set(spectatorId, ws);
+			console.log(`Client connected: ${spectatorId}${roomId ? ` to room ${roomId}` : ""}`);
 
 			// If connecting to a room, check if room exists
 			if (roomId) {
@@ -463,8 +520,8 @@ const server = Bun.serve<WebSocketData>({
 				const msg: StateMessage = {
 					type: "state",
 					state: room.gameState,
-					playerId,
-					isAdmin: playerId === room.adminId,
+					spectatorId,
+					isAdmin: spectatorId === room.adminId,
 				};
 				ws.send(JSON.stringify(msg));
 			}
@@ -481,39 +538,40 @@ const server = Bun.serve<WebSocketData>({
 		},
 
 		close(ws) {
-			const playerId = ws.data.playerId;
+			const spectatorId = ws.data.spectatorId;
 			const roomId = ws.data.roomId;
-			connections.delete(playerId);
-			console.log(`Client disconnected: ${playerId}`);
+			connections.delete(spectatorId);
+			console.log(`Client disconnected: ${spectatorId}`);
 
 			if (!roomId) return;
 
 			const room = rooms.get(roomId);
 			if (!room) return;
 
-			// Remove player from room
+			// Remove spectator from room
 			updateRoomState(roomId, (r) => ({
 				...r,
-				gameState: removePlayer(r.gameState, playerId),
+				gameState: removeSpectator(r.gameState, spectatorId),
 			}));
 
 			// Get updated room
 			const updatedRoom = rooms.get(roomId);
 			if (!updatedRoom) return;
 
-			// If no players left, clean up the room
-			if (updatedRoom.gameState.players.length === 0) {
+			// If no spectators left and no admin connection, clean up the room
+			const adminStillConnected = connections.has(room.adminId);
+			if (updatedRoom.gameState.spectators.length === 0 && !adminStillConnected) {
 				clearRoomTimer(roomId);
 				rooms.delete(roomId);
 				console.log(`Room ${roomId} deleted (empty)`);
 				return;
 			}
 
-			// If the disconnected player was the admin, reassign admin to first remaining player
-			if (updatedRoom.adminId === playerId) {
-				const newAdminId = updatedRoom.gameState.players[0].id;
+			// If the disconnected spectator was the admin and there are other spectators, reassign admin
+			if (updatedRoom.adminId === spectatorId && updatedRoom.gameState.spectators.length > 0) {
+				const newAdminId = updatedRoom.gameState.spectators[0].id;
 				rooms.set(roomId, { ...updatedRoom, adminId: newAdminId });
-				console.log(`Admin reassigned from ${playerId} to ${newAdminId} in room ${roomId}`);
+				console.log(`Admin reassigned from ${spectatorId} to ${newAdminId} in room ${roomId}`);
 			}
 
 			broadcastState(roomId);

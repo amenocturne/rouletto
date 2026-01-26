@@ -1,16 +1,18 @@
 // Unit tests for game state management
 
 import { describe, expect, test } from "bun:test";
-import type { Player } from "../shared/types";
+import type { Candidate, Spectator } from "../shared/types";
 import {
-	addPlayer,
+	addCandidates,
+	addSpectator,
 	canPlaceBet,
 	canReset,
 	canSpin,
 	canStartBetting,
 	createInitialState,
 	placeBet,
-	removePlayer,
+	removeCandidate,
+	removeSpectator,
 	resetGame,
 	selectRandomWinner,
 	setResult,
@@ -22,16 +24,15 @@ import {
 // Helper Functions
 // ============================================
 
-const createPlayer = (
-	id: string,
-	name: string,
-	isHost = false,
-	bet: string | null = null,
-): Player => ({
+const createSpectator = (id: string, name: string, bet: string | null = null): Spectator => ({
 	id,
 	name,
-	isHost,
 	bet,
+});
+
+const createCandidate = (id: string, name: string): Candidate => ({
+	id,
+	name,
 });
 
 // ============================================
@@ -41,7 +42,8 @@ const createPlayer = (
 describe("createInitialState", () => {
 	test("creates empty state with waiting phase", () => {
 		const state = createInitialState();
-		expect(state.players).toEqual([]);
+		expect(state.spectators).toEqual([]);
+		expect(state.candidates).toEqual([]);
 		expect(state.phase).toBe("waiting");
 		expect(state.winner).toBeNull();
 		expect(state.bettingEndsAt).toBeNull();
@@ -49,125 +51,202 @@ describe("createInitialState", () => {
 });
 
 // ============================================
-// Add Player Tests
+// Add Spectator Tests
 // ============================================
 
-describe("addPlayer", () => {
-	test("adds player to empty state", () => {
+describe("addSpectator", () => {
+	test("adds spectator to empty state", () => {
 		const state = createInitialState();
-		const player = createPlayer("1", "Alice");
-		const newState = addPlayer(state, player);
+		const spectator = createSpectator("1", "Alice");
+		const newState = addSpectator(state, spectator);
 
-		expect(newState.players).toHaveLength(1);
-		expect(newState.players[0].id).toBe("1");
-		expect(newState.players[0].name).toBe("Alice");
+		expect(newState.spectators).toHaveLength(1);
+		expect(newState.spectators[0].id).toBe("1");
+		expect(newState.spectators[0].name).toBe("Alice");
 	});
 
-	test("first player becomes host", () => {
-		const state = createInitialState();
-		const player = createPlayer("1", "Alice", false);
-		const newState = addPlayer(state, player);
-
-		expect(newState.players[0].isHost).toBe(true);
-	});
-
-	test("second player is not host", () => {
+	test("adds multiple spectators", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
+		state = addSpectator(state, createSpectator("1", "Alice"));
+		state = addSpectator(state, createSpectator("2", "Bob"));
 
-		expect(state.players[0].isHost).toBe(true);
-		expect(state.players[1].isHost).toBe(false);
+		expect(state.spectators).toHaveLength(2);
 	});
 
 	test("does not mutate original state", () => {
 		const state = createInitialState();
-		const player = createPlayer("1", "Alice");
-		const newState = addPlayer(state, player);
+		const spectator = createSpectator("1", "Alice");
+		const newState = addSpectator(state, spectator);
 
-		expect(state.players).toHaveLength(0);
-		expect(newState.players).toHaveLength(1);
+		expect(state.spectators).toHaveLength(0);
+		expect(newState.spectators).toHaveLength(1);
 		expect(state).not.toBe(newState);
 	});
 });
 
 // ============================================
-// Remove Player Tests
+// Remove Spectator Tests
 // ============================================
 
-describe("removePlayer", () => {
-	test("removes player from state", () => {
+describe("removeSpectator", () => {
+	test("removes spectator from state", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
+		state = addSpectator(state, createSpectator("1", "Alice"));
+		state = addSpectator(state, createSpectator("2", "Bob"));
 
-		const newState = removePlayer(state, "2");
+		const newState = removeSpectator(state, "2");
 
-		expect(newState.players).toHaveLength(1);
-		expect(newState.players[0].id).toBe("1");
+		expect(newState.spectators).toHaveLength(1);
+		expect(newState.spectators[0].id).toBe("1");
 	});
 
-	test("returns same state if player not found", () => {
+	test("returns same state if spectator not found", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addSpectator(state, createSpectator("1", "Alice"));
 
-		const newState = removePlayer(state, "nonexistent");
+		const newState = removeSpectator(state, "nonexistent");
 
-		expect(newState.players).toHaveLength(1);
+		expect(newState).toBe(state);
 	});
 
-	test("transfers host to next player when host leaves", () => {
+	test("handles removing last spectator", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
-		state = addPlayer(state, createPlayer("3", "Charlie"));
+		state = addSpectator(state, createSpectator("1", "Alice"));
 
-		// Alice is host, remove her
-		const newState = removePlayer(state, "1");
+		const newState = removeSpectator(state, "1");
 
-		expect(newState.players).toHaveLength(2);
-		expect(newState.players[0].id).toBe("2");
-		expect(newState.players[0].isHost).toBe(true);
-		expect(newState.players[1].isHost).toBe(false);
-	});
-
-	test("clears bets on removed player", () => {
-		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
-		state = addPlayer(state, createPlayer("3", "Charlie"));
-
-		// Start betting and place bets
-		state = startBetting(state, Date.now() + 60000);
-		state = placeBet(state, "1", "2"); // Alice bets on Bob
-		state = placeBet(state, "3", "2"); // Charlie bets on Bob
-
-		// Remove Bob
-		const newState = removePlayer(state, "2");
-
-		expect(newState.players).toHaveLength(2);
-		expect(newState.players.find((p) => p.id === "1")?.bet).toBeNull();
-		expect(newState.players.find((p) => p.id === "3")?.bet).toBeNull();
-	});
-
-	test("handles removing last player", () => {
-		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-
-		const newState = removePlayer(state, "1");
-
-		expect(newState.players).toHaveLength(0);
+		expect(newState.spectators).toHaveLength(0);
 	});
 
 	test("does not mutate original state", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
+		state = addSpectator(state, createSpectator("1", "Alice"));
+		state = addSpectator(state, createSpectator("2", "Bob"));
 
-		const newState = removePlayer(state, "2");
+		const newState = removeSpectator(state, "2");
 
-		expect(state.players).toHaveLength(2);
-		expect(newState.players).toHaveLength(1);
+		expect(state.spectators).toHaveLength(2);
+		expect(newState.spectators).toHaveLength(1);
+	});
+});
+
+// ============================================
+// Add Candidates Tests
+// ============================================
+
+describe("addCandidates", () => {
+	test("adds candidates from newline-separated text", () => {
+		const state = createInitialState();
+		const newState = addCandidates(state, "Alice\nBob\nCharlie");
+
+		expect(newState.candidates).toHaveLength(3);
+		expect(newState.candidates[0].name).toBe("Alice");
+		expect(newState.candidates[1].name).toBe("Bob");
+		expect(newState.candidates[2].name).toBe("Charlie");
+	});
+
+	test("trims whitespace from names", () => {
+		const state = createInitialState();
+		const newState = addCandidates(state, "  Alice  \n  Bob  ");
+
+		expect(newState.candidates).toHaveLength(2);
+		expect(newState.candidates[0].name).toBe("Alice");
+		expect(newState.candidates[1].name).toBe("Bob");
+	});
+
+	test("filters empty lines", () => {
+		const state = createInitialState();
+		const newState = addCandidates(state, "Alice\n\n\nBob\n  \nCharlie");
+
+		expect(newState.candidates).toHaveLength(3);
+	});
+
+	test("returns same state for empty input", () => {
+		const state = createInitialState();
+		const newState = addCandidates(state, "   \n  \n  ");
+
+		expect(newState).toBe(state);
+	});
+
+	test("appends to existing candidates", () => {
+		let state = createInitialState();
+		state = addCandidates(state, "Alice\nBob");
+		state = addCandidates(state, "Charlie\nDiana");
+
+		expect(state.candidates).toHaveLength(4);
+	});
+
+	test("assigns unique IDs to candidates", () => {
+		const state = createInitialState();
+		const newState = addCandidates(state, "Alice\nBob");
+
+		expect(newState.candidates[0].id).not.toBe(newState.candidates[1].id);
+	});
+
+	test("does not mutate original state", () => {
+		const state = createInitialState();
+		const newState = addCandidates(state, "Alice");
+
+		expect(state.candidates).toHaveLength(0);
+		expect(newState.candidates).toHaveLength(1);
+	});
+});
+
+// ============================================
+// Remove Candidate Tests
+// ============================================
+
+describe("removeCandidate", () => {
+	test("removes candidate from state", () => {
+		let state = createInitialState();
+		state = addCandidates(state, "Alice\nBob");
+
+		const candidateId = state.candidates[1].id;
+		const newState = removeCandidate(state, candidateId);
+
+		expect(newState.candidates).toHaveLength(1);
+		expect(newState.candidates[0].name).toBe("Alice");
+	});
+
+	test("returns same state if candidate not found", () => {
+		let state = createInitialState();
+		state = addCandidates(state, "Alice");
+
+		const newState = removeCandidate(state, "nonexistent");
+
+		expect(newState).toBe(state);
+	});
+
+	test("clears bets on removed candidate", () => {
+		let state = createInitialState();
+		state = addCandidates(state, "Alice\nBob");
+		state = addSpectator(state, createSpectator("s1", "Spectator1"));
+		state = addSpectator(state, createSpectator("s2", "Spectator2"));
+
+		const candidateId = state.candidates[0].id;
+
+		// Start betting and place bets
+		state = startBetting(state, Date.now() + 60000);
+		state = placeBet(state, "s1", candidateId);
+		state = placeBet(state, "s2", candidateId);
+
+		// Reset to waiting to remove candidate
+		state = { ...state, phase: "waiting" as const };
+		const newState = removeCandidate(state, candidateId);
+
+		expect(newState.spectators.find((s) => s.id === "s1")?.bet).toBeNull();
+		expect(newState.spectators.find((s) => s.id === "s2")?.bet).toBeNull();
+	});
+
+	test("does not mutate original state", () => {
+		let state = createInitialState();
+		state = addCandidates(state, "Alice\nBob");
+
+		const candidateId = state.candidates[0].id;
+		const newState = removeCandidate(state, candidateId);
+
+		expect(state.candidates).toHaveLength(2);
+		expect(newState.candidates).toHaveLength(1);
 	});
 });
 
@@ -178,65 +257,61 @@ describe("removePlayer", () => {
 describe("placeBet", () => {
 	test("places bet during betting phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
+		state = addCandidates(state, "Alice\nBob");
+		state = addSpectator(state, createSpectator("s1", "Spectator1"));
 		state = startBetting(state, Date.now() + 60000);
 
-		const newState = placeBet(state, "1", "2");
+		const candidateId = state.candidates[0].id;
+		const newState = placeBet(state, "s1", candidateId);
 
-		expect(newState.players.find((p) => p.id === "1")?.bet).toBe("2");
-	});
-
-	test("allows betting on yourself", () => {
-		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = startBetting(state, Date.now() + 60000);
-
-		const newState = placeBet(state, "1", "1");
-
-		expect(newState.players.find((p) => p.id === "1")?.bet).toBe("1");
+		expect(newState.spectators.find((s) => s.id === "s1")?.bet).toBe(candidateId);
 	});
 
 	test("allows changing bet", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
-		state = addPlayer(state, createPlayer("3", "Charlie"));
+		state = addCandidates(state, "Alice\nBob");
+		state = addSpectator(state, createSpectator("s1", "Spectator1"));
 		state = startBetting(state, Date.now() + 60000);
 
-		state = placeBet(state, "1", "2");
-		expect(state.players.find((p) => p.id === "1")?.bet).toBe("2");
+		const candidateId1 = state.candidates[0].id;
+		const candidateId2 = state.candidates[1].id;
 
-		state = placeBet(state, "1", "3");
-		expect(state.players.find((p) => p.id === "1")?.bet).toBe("3");
+		state = placeBet(state, "s1", candidateId1);
+		expect(state.spectators.find((s) => s.id === "s1")?.bet).toBe(candidateId1);
+
+		state = placeBet(state, "s1", candidateId2);
+		expect(state.spectators.find((s) => s.id === "s1")?.bet).toBe(candidateId2);
 	});
 
 	test("does not place bet if not in betting phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
+		state = addCandidates(state, "Alice");
+		state = addSpectator(state, createSpectator("s1", "Spectator1"));
 
-		// In waiting phase
-		const newState = placeBet(state, "1", "2");
-		expect(newState.players.find((p) => p.id === "1")?.bet).toBeNull();
+		const candidateId = state.candidates[0].id;
+		const newState = placeBet(state, "s1", candidateId);
+
+		expect(newState.spectators.find((s) => s.id === "s1")?.bet).toBeNull();
 	});
 
-	test("does not place bet on non-existent player", () => {
+	test("does not place bet on non-existent candidate", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
+		state = addSpectator(state, createSpectator("s1", "Spectator1"));
 		state = startBetting(state, Date.now() + 60000);
 
-		const newState = placeBet(state, "1", "nonexistent");
+		const newState = placeBet(state, "s1", "nonexistent");
 
-		expect(newState.players.find((p) => p.id === "1")?.bet).toBeNull();
+		expect(newState.spectators.find((s) => s.id === "s1")?.bet).toBeNull();
 	});
 
-	test("does not place bet for non-existent player", () => {
+	test("does not place bet for non-existent spectator", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
 		state = startBetting(state, Date.now() + 60000);
 
-		const newState = placeBet(state, "nonexistent", "1");
+		const candidateId = state.candidates[0].id;
+		const newState = placeBet(state, "nonexistent", candidateId);
 
 		// State should remain unchanged
 		expect(newState).toEqual(state);
@@ -250,7 +325,7 @@ describe("placeBet", () => {
 describe("startBetting", () => {
 	test("transitions to betting phase with end time", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
 
 		const endsAt = Date.now() + 60000;
 		const newState = startBetting(state, endsAt);
@@ -261,10 +336,11 @@ describe("startBetting", () => {
 
 	test("clears winner when starting new betting phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
 		state = startBetting(state, Date.now() + 60000);
 		state = startSpinning(state);
-		state = setResult(state, "1");
+		const candidateId = state.candidates[0].id;
+		state = setResult(state, candidateId);
 
 		// Reset and start betting again
 		state = resetGame(state);
@@ -275,7 +351,7 @@ describe("startBetting", () => {
 
 	test("does not transition if not in waiting phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
 		state = startBetting(state, Date.now() + 60000);
 
 		// Already in betting phase, try to start betting again
@@ -287,7 +363,7 @@ describe("startBetting", () => {
 
 	test("does not transition from spinning phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
 		state = startBetting(state, Date.now() + 60000);
 		state = startSpinning(state);
 
@@ -299,10 +375,11 @@ describe("startBetting", () => {
 
 	test("does not transition from result phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
 		state = startBetting(state, Date.now() + 60000);
 		state = startSpinning(state);
-		state = setResult(state, "1");
+		const candidateId = state.candidates[0].id;
+		state = setResult(state, candidateId);
 
 		const newState = startBetting(state, Date.now() + 120000);
 
@@ -314,7 +391,7 @@ describe("startBetting", () => {
 describe("startSpinning", () => {
 	test("transitions to spinning phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
 		state = startBetting(state, Date.now() + 60000);
 
 		const newState = startSpinning(state);
@@ -325,7 +402,7 @@ describe("startSpinning", () => {
 
 	test("does not transition from waiting phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
 
 		const newState = startSpinning(state);
 
@@ -335,7 +412,7 @@ describe("startSpinning", () => {
 
 	test("does not transition from spinning phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
 		state = startBetting(state, Date.now() + 60000);
 		state = startSpinning(state);
 
@@ -347,10 +424,11 @@ describe("startSpinning", () => {
 
 	test("does not transition from result phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
 		state = startBetting(state, Date.now() + 60000);
 		state = startSpinning(state);
-		state = setResult(state, "1");
+		const candidateId = state.candidates[0].id;
+		state = setResult(state, candidateId);
 
 		const newState = startSpinning(state);
 
@@ -362,21 +440,20 @@ describe("startSpinning", () => {
 describe("setResult", () => {
 	test("sets winner and transitions to result phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
+		state = addCandidates(state, "Alice\nBob");
 		state = startBetting(state, Date.now() + 60000);
 		state = startSpinning(state);
 
-		const newState = setResult(state, "2");
+		const candidateId = state.candidates[1].id;
+		const newState = setResult(state, candidateId);
 
 		expect(newState.phase).toBe("result");
-		expect(newState.winner).toBe("2");
+		expect(newState.winner).toBe(candidateId);
 	});
 
 	test("does not set non-existent winner", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
+		state = addCandidates(state, "Alice\nBob");
 		state = startBetting(state, Date.now() + 60000);
 		state = startSpinning(state);
 
@@ -391,12 +468,12 @@ describe("setResult", () => {
 describe("resetGame", () => {
 	test("resets to waiting phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
+		state = addCandidates(state, "Alice\nBob");
+		state = addSpectator(state, createSpectator("s1", "Spectator1"));
 		state = startBetting(state, Date.now() + 60000);
-		state = placeBet(state, "1", "2");
+		state = placeBet(state, "s1", state.candidates[0].id);
 		state = startSpinning(state);
-		state = setResult(state, "2");
+		state = setResult(state, state.candidates[1].id);
 
 		const newState = resetGame(state);
 
@@ -407,32 +484,33 @@ describe("resetGame", () => {
 
 	test("clears all bets", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
+		state = addCandidates(state, "Alice\nBob");
+		state = addSpectator(state, createSpectator("s1", "Spectator1"));
+		state = addSpectator(state, createSpectator("s2", "Spectator2"));
 		state = startBetting(state, Date.now() + 60000);
-		state = placeBet(state, "1", "2");
-		state = placeBet(state, "2", "1");
+		state = placeBet(state, "s1", state.candidates[0].id);
+		state = placeBet(state, "s2", state.candidates[1].id);
 		state = startSpinning(state);
-		state = setResult(state, "2");
+		state = setResult(state, state.candidates[0].id);
 
 		const newState = resetGame(state);
 
-		expect(newState.players.every((p) => p.bet === null)).toBe(true);
+		expect(newState.spectators.every((s) => s.bet === null)).toBe(true);
 	});
 
-	test("keeps players", () => {
+	test("keeps spectators and candidates", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
+		state = addCandidates(state, "Alice\nBob");
+		state = addSpectator(state, createSpectator("s1", "Spectator1"));
+		state = addSpectator(state, createSpectator("s2", "Spectator2"));
 		state = startBetting(state, Date.now() + 60000);
 		state = startSpinning(state);
-		state = setResult(state, "2");
+		state = setResult(state, state.candidates[0].id);
 
 		const newState = resetGame(state);
 
-		expect(newState.players).toHaveLength(2);
-		expect(newState.players[0].id).toBe("1");
-		expect(newState.players[1].id).toBe("2");
+		expect(newState.spectators).toHaveLength(2);
+		expect(newState.candidates).toHaveLength(2);
 	});
 });
 
@@ -441,44 +519,44 @@ describe("resetGame", () => {
 // ============================================
 
 describe("selectRandomWinner", () => {
-	test("returns null for empty players", () => {
+	test("returns null for empty candidates", () => {
 		const winner = selectRandomWinner([], 0.5);
 		expect(winner).toBeNull();
 	});
 
-	test("returns the only player when one player", () => {
-		const players = [createPlayer("1", "Alice")];
-		const winner = selectRandomWinner(players, 0.5);
+	test("returns the only candidate when one candidate", () => {
+		const candidates = [createCandidate("1", "Alice")];
+		const winner = selectRandomWinner(candidates, 0.5);
 		expect(winner).toBe("1");
 	});
 
-	test("returns first player when randomValue is 0", () => {
-		const players = [
-			createPlayer("1", "Alice"),
-			createPlayer("2", "Bob"),
-			createPlayer("3", "Charlie"),
+	test("returns first candidate when randomValue is 0", () => {
+		const candidates = [
+			createCandidate("1", "Alice"),
+			createCandidate("2", "Bob"),
+			createCandidate("3", "Charlie"),
 		];
-		const winner = selectRandomWinner(players, 0);
+		const winner = selectRandomWinner(candidates, 0);
 		expect(winner).toBe("1");
 	});
 
-	test("returns last player when randomValue is close to 1", () => {
-		const players = [
-			createPlayer("1", "Alice"),
-			createPlayer("2", "Bob"),
-			createPlayer("3", "Charlie"),
+	test("returns last candidate when randomValue is close to 1", () => {
+		const candidates = [
+			createCandidate("1", "Alice"),
+			createCandidate("2", "Bob"),
+			createCandidate("3", "Charlie"),
 		];
-		const winner = selectRandomWinner(players, 0.99);
+		const winner = selectRandomWinner(candidates, 0.99);
 		expect(winner).toBe("3");
 	});
 
-	test("returns middle player with appropriate randomValue", () => {
-		const players = [
-			createPlayer("1", "Alice"),
-			createPlayer("2", "Bob"),
-			createPlayer("3", "Charlie"),
+	test("returns middle candidate with appropriate randomValue", () => {
+		const candidates = [
+			createCandidate("1", "Alice"),
+			createCandidate("2", "Bob"),
+			createCandidate("3", "Charlie"),
 		];
-		const winner = selectRandomWinner(players, 0.5);
+		const winner = selectRandomWinner(candidates, 0.5);
 		expect(winner).toBe("2");
 	});
 });
@@ -488,24 +566,26 @@ describe("selectRandomWinner", () => {
 // ============================================
 
 describe("canPlaceBet", () => {
-	test("returns true during betting phase for existing player", () => {
+	test("returns true during betting phase for existing spectator", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
+		state = addSpectator(state, createSpectator("s1", "Spectator1"));
 		state = startBetting(state, Date.now() + 60000);
 
-		expect(canPlaceBet(state, "1")).toBe(true);
+		expect(canPlaceBet(state, "s1")).toBe(true);
 	});
 
 	test("returns false during waiting phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addSpectator(state, createSpectator("s1", "Spectator1"));
 
-		expect(canPlaceBet(state, "1")).toBe(false);
+		expect(canPlaceBet(state, "s1")).toBe(false);
 	});
 
-	test("returns false for non-existent player", () => {
+	test("returns false for non-existent spectator", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
+		state = addSpectator(state, createSpectator("s1", "Spectator1"));
 		state = startBetting(state, Date.now() + 60000);
 
 		expect(canPlaceBet(state, "nonexistent")).toBe(false);
@@ -513,89 +593,61 @@ describe("canPlaceBet", () => {
 });
 
 describe("canStartBetting", () => {
-	test("returns true for host in waiting phase with players", () => {
+	test("returns true in waiting phase with candidates", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
 
-		expect(canStartBetting(state, "1")).toBe(true);
+		expect(canStartBetting(state)).toBe(true);
 	});
 
-	test("returns false for non-host", () => {
-		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
-
-		expect(canStartBetting(state, "2")).toBe(false);
+	test("returns false with no candidates", () => {
+		const state = createInitialState();
+		expect(canStartBetting(state)).toBe(false);
 	});
 
 	test("returns false if not in waiting phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
 		state = startBetting(state, Date.now() + 60000);
 
-		expect(canStartBetting(state, "1")).toBe(false);
-	});
-
-	test("returns false with no players", () => {
-		const state = createInitialState();
-		expect(canStartBetting(state, "1")).toBe(false);
+		expect(canStartBetting(state)).toBe(false);
 	});
 });
 
 describe("canSpin", () => {
-	test("returns true for host in betting phase", () => {
+	test("returns true in betting phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
 		state = startBetting(state, Date.now() + 60000);
 
-		expect(canSpin(state, "1")).toBe(true);
-	});
-
-	test("returns false for non-host", () => {
-		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
-		state = startBetting(state, Date.now() + 60000);
-
-		expect(canSpin(state, "2")).toBe(false);
+		expect(canSpin(state)).toBe(true);
 	});
 
 	test("returns false if not in betting phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
 
-		expect(canSpin(state, "1")).toBe(false);
+		expect(canSpin(state)).toBe(false);
 	});
 });
 
 describe("canReset", () => {
-	test("returns true for host in result phase", () => {
+	test("returns true in result phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
 		state = startBetting(state, Date.now() + 60000);
 		state = startSpinning(state);
-		state = setResult(state, "1");
+		state = setResult(state, state.candidates[0].id);
 
-		expect(canReset(state, "1")).toBe(true);
-	});
-
-	test("returns false for non-host", () => {
-		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
-		state = startBetting(state, Date.now() + 60000);
-		state = startSpinning(state);
-		state = setResult(state, "1");
-
-		expect(canReset(state, "2")).toBe(false);
+		expect(canReset(state)).toBe(true);
 	});
 
 	test("returns false if not in result phase", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
 		state = startBetting(state, Date.now() + 60000);
 
-		expect(canReset(state, "1")).toBe(false);
+		expect(canReset(state)).toBe(false);
 	});
 });
 
@@ -607,13 +659,15 @@ describe("edge cases", () => {
 	test("full game flow", () => {
 		let state = createInitialState();
 
-		// Players join
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
-		state = addPlayer(state, createPlayer("3", "Charlie"));
+		// Admin adds candidates
+		state = addCandidates(state, "Alice\nBob\nCharlie");
+		expect(state.candidates).toHaveLength(3);
 
-		expect(state.players).toHaveLength(3);
-		expect(state.players[0].isHost).toBe(true);
+		// Spectators join
+		state = addSpectator(state, createSpectator("s1", "Spectator1"));
+		state = addSpectator(state, createSpectator("s2", "Spectator2"));
+		state = addSpectator(state, createSpectator("s3", "Spectator3"));
+		expect(state.spectators).toHaveLength(3);
 
 		// Start betting
 		const endsAt = Date.now() + 60000;
@@ -621,74 +675,84 @@ describe("edge cases", () => {
 		expect(state.phase).toBe("betting");
 
 		// Place bets
-		state = placeBet(state, "1", "2");
-		state = placeBet(state, "2", "2");
-		state = placeBet(state, "3", "1");
+		const candidateIds = state.candidates.map((c) => c.id);
+		state = placeBet(state, "s1", candidateIds[0]);
+		state = placeBet(state, "s2", candidateIds[0]);
+		state = placeBet(state, "s3", candidateIds[1]);
 
-		expect(state.players.find((p) => p.id === "1")?.bet).toBe("2");
-		expect(state.players.find((p) => p.id === "2")?.bet).toBe("2");
-		expect(state.players.find((p) => p.id === "3")?.bet).toBe("1");
+		expect(state.spectators.find((s) => s.id === "s1")?.bet).toBe(candidateIds[0]);
+		expect(state.spectators.find((s) => s.id === "s2")?.bet).toBe(candidateIds[0]);
+		expect(state.spectators.find((s) => s.id === "s3")?.bet).toBe(candidateIds[1]);
 
 		// Spin
 		state = startSpinning(state);
 		expect(state.phase).toBe("spinning");
 
 		// Result
-		state = setResult(state, "2");
+		state = setResult(state, candidateIds[0]);
 		expect(state.phase).toBe("result");
-		expect(state.winner).toBe("2");
+		expect(state.winner).toBe(candidateIds[0]);
 
 		// Reset
 		state = resetGame(state);
 		expect(state.phase).toBe("waiting");
 		expect(state.winner).toBeNull();
-		expect(state.players.every((p) => p.bet === null)).toBe(true);
-		expect(state.players).toHaveLength(3);
+		expect(state.spectators.every((s) => s.bet === null)).toBe(true);
+		expect(state.spectators).toHaveLength(3);
+		expect(state.candidates).toHaveLength(3);
 	});
 
-	test("single player game", () => {
+	test("single candidate game", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
+		state = addCandidates(state, "Alice");
+		state = addSpectator(state, createSpectator("s1", "Spectator1"));
 
-		expect(canStartBetting(state, "1")).toBe(true);
+		expect(canStartBetting(state)).toBe(true);
 
 		state = startBetting(state, Date.now() + 60000);
-		state = placeBet(state, "1", "1");
+		state = placeBet(state, "s1", state.candidates[0].id);
 		state = startSpinning(state);
-		state = setResult(state, "1");
+		state = setResult(state, state.candidates[0].id);
 
-		expect(state.winner).toBe("1");
+		expect(state.winner).toBe(state.candidates[0].id);
 	});
 
-	test("host leaving during betting phase", () => {
+	test("spectator leaving with active bet", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
+		state = addCandidates(state, "Alice\nBob");
+		state = addSpectator(state, createSpectator("s1", "Spectator1"));
+		state = addSpectator(state, createSpectator("s2", "Spectator2"));
 		state = startBetting(state, Date.now() + 60000);
-		state = placeBet(state, "2", "1"); // Bob bets on Alice
+		state = placeBet(state, "s1", state.candidates[0].id);
+		state = placeBet(state, "s2", state.candidates[0].id);
 
-		// Alice (host) leaves
-		state = removePlayer(state, "1");
+		// Spectator leaves
+		state = removeSpectator(state, "s1");
 
-		expect(state.players).toHaveLength(1);
-		expect(state.players[0].isHost).toBe(true);
-		expect(state.players[0].bet).toBeNull(); // Bet on Alice cleared
+		expect(state.spectators).toHaveLength(1);
+		expect(state.spectators[0].id).toBe("s2");
+		// Other spectator's bet remains
+		expect(state.spectators[0].bet).toBe(state.candidates[0].id);
 	});
 
-	test("multiple host transfers", () => {
+	test("candidate removed clears bets on that candidate only", () => {
 		let state = createInitialState();
-		state = addPlayer(state, createPlayer("1", "Alice"));
-		state = addPlayer(state, createPlayer("2", "Bob"));
-		state = addPlayer(state, createPlayer("3", "Charlie"));
+		state = addCandidates(state, "Alice\nBob");
+		state = addSpectator(state, createSpectator("s1", "Spectator1"));
+		state = addSpectator(state, createSpectator("s2", "Spectator2"));
+		state = startBetting(state, Date.now() + 60000);
 
-		// Remove first host
-		state = removePlayer(state, "1");
-		expect(state.players[0].id).toBe("2");
-		expect(state.players[0].isHost).toBe(true);
+		const aliceId = state.candidates[0].id;
+		const bobId = state.candidates[1].id;
 
-		// Remove second host
-		state = removePlayer(state, "2");
-		expect(state.players[0].id).toBe("3");
-		expect(state.players[0].isHost).toBe(true);
+		state = placeBet(state, "s1", aliceId); // Bet on Alice
+		state = placeBet(state, "s2", bobId); // Bet on Bob
+
+		// Reset to waiting to remove candidate
+		state = { ...state, phase: "waiting" as const };
+		state = removeCandidate(state, aliceId);
+
+		expect(state.spectators.find((s) => s.id === "s1")?.bet).toBeNull();
+		expect(state.spectators.find((s) => s.id === "s2")?.bet).toBe(bobId);
 	});
 });

@@ -1,10 +1,11 @@
 import * as PIXI from "pixi.js";
 import { CRTFilter, GlowFilter } from "pixi-filters";
-import type { ClientMessage, GameState, Phase, Player, ServerMessage } from "../shared/types";
+import type { Candidate, ClientMessage, GameState, Phase, ServerMessage } from "../shared/types";
 
 // State management
 let currentState: GameState | null = null;
-let myPlayerId: string | null = null;
+let mySpectatorId: string | null = null;
+let isAdmin = false;
 let ws: WebSocket | null = null;
 let countdownInterval: number | null = null;
 
@@ -152,7 +153,8 @@ const handleServerMessage = (message: ServerMessage): void => {
 			showRoomError(message.message);
 			break;
 		case "state":
-			myPlayerId = message.playerId;
+			mySpectatorId = message.spectatorId;
+			isAdmin = message.isAdmin;
 			currentState = message.state;
 			render();
 			break;
@@ -253,13 +255,18 @@ const showJoinScreen = (): void => {
 		</div>
 		<div id="game-screen" class="screen hidden">
 			<div id="game-header">
-				<h2>Players</h2>
+				<h2>Wheel Candidates</h2>
 				<div id="phase-indicator"></div>
 				<div id="countdown"></div>
 			</div>
-			<div id="player-list"></div>
+			<div id="admin-controls"></div>
+			<div id="candidates-list"></div>
 			<div id="wheel-container"></div>
-			<div id="host-controls"></div>
+			<div id="action-controls"></div>
+			<div id="spectators-section">
+				<h3>Spectators</h3>
+				<div id="spectators-list"></div>
+			</div>
 			<div id="result-overlay" class="hidden"></div>
 		</div>
 	`;
@@ -305,35 +312,86 @@ const escapeHtml = (text: string): string => {
 	return div.innerHTML;
 };
 
-// Render player list
-const renderPlayerList = (): void => {
-	const container = document.getElementById("player-list");
+// Render admin controls (add candidates textarea)
+const renderAdminControls = (): void => {
+	const container = document.getElementById("admin-controls");
 	if (!container || !currentState) return;
 
 	container.innerHTML = "";
 
-	const me = currentState.players.find((p) => p.id === myPlayerId);
+	if (!isAdmin || currentState.phase !== "waiting") {
+		return;
+	}
+
+	container.innerHTML = `
+		<div class="add-candidates-section">
+			<h3>Add Candidates</h3>
+			<textarea id="candidates-textarea" placeholder="Enter names (one per line)&#10;John&#10;Jane&#10;Bob"></textarea>
+			<button id="add-candidates-btn" class="host-btn">Add to Wheel</button>
+		</div>
+	`;
+
+	const addBtn = document.getElementById("add-candidates-btn");
+	const textarea = document.getElementById("candidates-textarea") as HTMLTextAreaElement | null;
+
+	if (addBtn && textarea) {
+		addBtn.onclick = () => {
+			const names = textarea.value;
+			if (names.trim()) {
+				send({ type: "addCandidates", names });
+				textarea.value = "";
+			}
+		};
+	}
+};
+
+// Render candidates list (wheel entries)
+const renderCandidatesList = (): void => {
+	const container = document.getElementById("candidates-list");
+	if (!container || !currentState) return;
+
+	container.innerHTML = "";
+
+	if (currentState.candidates.length === 0) {
+		container.innerHTML =
+			'<p class="no-candidates">No candidates yet. Admin can add names above.</p>';
+		return;
+	}
+
+	const me = currentState.spectators.find((s) => s.id === mySpectatorId);
 	const canBet = currentState.phase === "betting";
 
-	for (const player of currentState.players) {
+	for (const candidate of currentState.candidates) {
 		const div = document.createElement("div");
-		div.className = "player-card";
-		if (player.id === myPlayerId) div.classList.add("is-me");
-		if (player.isHost) div.classList.add("is-host");
-		if (me?.bet === player.id) div.classList.add("my-bet");
-		if (player.bet !== null) div.classList.add("has-bet");
+		div.className = "candidate-card";
+
+		if (me?.bet === candidate.id) div.classList.add("my-bet");
 		if (canBet) div.classList.add("can-bet");
 
+		// Count how many spectators bet on this candidate
+		const betCount = currentState.spectators.filter((s) => s.bet === candidate.id).length;
+
 		div.innerHTML = `
-			<span class="player-name">${escapeHtml(player.name)}</span>
-			${player.isHost ? '<span class="host-badge">Host</span>' : ""}
-			${player.bet !== null ? '<span class="bet-indicator">*</span>' : ""}
+			<span class="candidate-name">${escapeHtml(candidate.name)}</span>
+			${betCount > 0 ? `<span class="bet-count">${betCount} bet${betCount > 1 ? "s" : ""}</span>` : ""}
+			${isAdmin && currentState.phase === "waiting" ? '<button class="remove-candidate-btn">X</button>' : ""}
 		`;
 
-		// Click to bet
+		// Click to bet during betting phase
 		if (canBet) {
-			div.addEventListener("click", () => {
-				send({ type: "placeBet", targetId: player.id });
+			div.addEventListener("click", (e) => {
+				// Don't bet if clicking the remove button
+				if ((e.target as HTMLElement).classList.contains("remove-candidate-btn")) return;
+				send({ type: "placeBet", targetId: candidate.id });
+			});
+		}
+
+		// Remove candidate button (admin only during waiting)
+		const removeBtn = div.querySelector(".remove-candidate-btn");
+		if (removeBtn) {
+			removeBtn.addEventListener("click", (e) => {
+				e.stopPropagation();
+				send({ type: "removeCandidate", candidateId: candidate.id });
 			});
 		}
 
@@ -341,17 +399,50 @@ const renderPlayerList = (): void => {
 	}
 };
 
-// Render host controls
-const renderHostControls = (): void => {
-	const container = document.getElementById("host-controls");
+// Render spectators list (connected users)
+const renderSpectatorsList = (): void => {
+	const container = document.getElementById("spectators-list");
 	if (!container || !currentState) return;
 
 	container.innerHTML = "";
 
-	const me = currentState.players.find((p) => p.id === myPlayerId);
-	if (!me?.isHost) return;
+	if (currentState.spectators.length === 0) {
+		container.innerHTML = '<p class="no-spectators">No spectators yet.</p>';
+		return;
+	}
 
-	if (currentState.phase === "waiting") {
+	for (const spectator of currentState.spectators) {
+		const div = document.createElement("div");
+		div.className = "spectator-card";
+
+		if (spectator.id === mySpectatorId) div.classList.add("is-me");
+		if (spectator.bet !== null) div.classList.add("has-bet");
+
+		// Find candidate name if they have a bet
+		const betCandidate = spectator.bet
+			? currentState.candidates.find((c) => c.id === spectator.bet)
+			: null;
+
+		div.innerHTML = `
+			<span class="spectator-name">${escapeHtml(spectator.name)}</span>
+			${spectator.id === mySpectatorId ? '<span class="you-badge">You</span>' : ""}
+			${spectator.bet !== null ? `<span class="bet-indicator" title="Bet on ${betCandidate ? escapeHtml(betCandidate.name) : "someone"}">*</span>` : ""}
+		`;
+
+		container.appendChild(div);
+	}
+};
+
+// Render action controls (start betting, spin)
+const renderActionControls = (): void => {
+	const container = document.getElementById("action-controls");
+	if (!container || !currentState) return;
+
+	container.innerHTML = "";
+
+	if (!isAdmin) return;
+
+	if (currentState.phase === "waiting" && currentState.candidates.length > 0) {
 		const btn = document.createElement("button");
 		btn.className = "host-btn";
 		btn.textContent = "Start Betting";
@@ -443,8 +534,8 @@ const spinWheel = (winnerId: string): void => {
 	if (!wheelContainer || !currentState || isSpinning) return;
 	isSpinning = true;
 
-	const players = currentState.players;
-	const winnerIndex = players.findIndex((p) => p.id === winnerId);
+	const candidates = currentState.candidates;
+	const winnerIndex = candidates.findIndex((c) => c.id === winnerId);
 	if (winnerIndex === -1) {
 		isSpinning = false;
 		return;
@@ -452,17 +543,17 @@ const spinWheel = (winnerId: string): void => {
 
 	// Calculate target angle to land on winner's segment
 	// Segments start at -PI/2 (top), pointer is at top
-	const segmentAngle = (2 * Math.PI) / players.length;
+	const segmentAngle = (2 * Math.PI) / candidates.length;
 
 	// Add small random offset within segment so it doesn't always land dead center
-	// ±30% of segment width
+	// +/-30% of segment width
 	const randomOffset = (Math.random() - 0.5) * segmentAngle * 0.6;
 
 	// Winner's segment center is at: winnerIndex * segmentAngle + segmentAngle/2
 	const winnerSegmentCenter = winnerIndex * segmentAngle + segmentAngle / 2 + randomOffset;
 
 	// The wheel needs to rotate so the winner segment aligns with the pointer at top
-	// If winner is at angle θ from top, we need to rotate by (2π - θ) to bring it to top
+	// If winner is at angle theta from top, we need to rotate by (2pi - theta) to bring it to top
 	const targetAngle = 2 * Math.PI - winnerSegmentCenter;
 	const totalRotation = EXTRA_ROTATIONS * 2 * Math.PI + targetAngle;
 
@@ -519,20 +610,20 @@ const drawPointer = (): void => {
 	pixiApp.stage.addChild(pointer);
 };
 
-// Draw the wheel with player segments
-const drawWheel = (players: readonly Player[]): void => {
+// Draw the wheel with candidate segments
+const drawWheel = (candidates: readonly Candidate[]): void => {
 	if (!wheelContainer || !pixiApp) return;
 
 	// Clear previous wheel
 	wheelContainer.removeChildren();
 
-	if (players.length === 0) return;
+	if (candidates.length === 0) return;
 
 	const radius = 180;
-	const segmentAngle = (2 * Math.PI) / players.length;
+	const segmentAngle = (2 * Math.PI) / candidates.length;
 
-	for (let i = 0; i < players.length; i++) {
-		const player = players[i];
+	for (let i = 0; i < candidates.length; i++) {
+		const candidate = candidates[i];
 		const startAngle = i * segmentAngle - Math.PI / 2; // Start from top
 		const endAngle = startAngle + segmentAngle;
 
@@ -546,14 +637,14 @@ const drawWheel = (players: readonly Player[]): void => {
 
 		wheelContainer.addChild(segment);
 
-		// Add player name text
+		// Add candidate name text
 		const midAngle = startAngle + segmentAngle / 2;
 		const textRadius = radius * 0.65;
 		const text = new PIXI.Text({
-			text: player.name.slice(0, 10), // Truncate long names
+			text: candidate.name.slice(0, 10), // Truncate long names
 			style: {
 				fontFamily: "Arial",
-				fontSize: Math.max(8, Math.min(16, 120 / players.length)),
+				fontSize: Math.max(8, Math.min(16, 120 / candidates.length)),
 				fill: 0xffffff,
 				fontWeight: "bold",
 			},
@@ -633,7 +724,7 @@ const initPixi = async (): Promise<void> => {
 const getPhaseText = (phase: Phase): string => {
 	switch (phase) {
 		case "waiting":
-			return "Waiting for players...";
+			return "Waiting for candidates...";
 		case "betting":
 			return "Place your bets!";
 		case "spinning":
@@ -664,16 +755,12 @@ const renderResultOverlay = (): void => {
 
 	overlay.classList.remove("hidden");
 
-	// Find winner
-	const winner = currentState.players.find((p) => p.id === currentState.winner);
+	// Find winner candidate
+	const winner = currentState.candidates.find((c) => c.id === currentState.winner);
 	if (!winner) return;
 
-	// Find players who guessed correctly
-	const correctGuessers = currentState.players.filter((p) => p.bet === currentState.winner);
-
-	// Check if current player is host
-	const me = currentState.players.find((p) => p.id === myPlayerId);
-	const isHost = me?.isHost ?? false;
+	// Find spectators who guessed correctly
+	const correctGuessers = currentState.spectators.filter((s) => s.bet === currentState.winner);
 
 	overlay.innerHTML = `
 		<div class="result-content">
@@ -686,7 +773,7 @@ const renderResultOverlay = (): void => {
 				<div class="correct-guessers">
 					<h3>Correct Guesses:</h3>
 					<ul>
-						${correctGuessers.map((p) => `<li>${escapeHtml(p.name)}${p.id === myPlayerId ? " (You!)" : ""}</li>`).join("")}
+						${correctGuessers.map((s) => `<li>${escapeHtml(s.name)}${s.id === mySpectatorId ? " (You!)" : ""}</li>`).join("")}
 					</ul>
 				</div>
 			`
@@ -694,11 +781,11 @@ const renderResultOverlay = (): void => {
 			}
 
 			${
-				isHost
+				isAdmin
 					? `
 				<button class="play-again-btn" id="play-again-btn">Play Again</button>
 			`
-					: '<p class="waiting-text">Waiting for host to start new round...</p>'
+					: '<p class="waiting-text">Waiting for admin to start new round...</p>'
 			}
 		</div>
 	`;
@@ -722,7 +809,7 @@ const render = (): void => {
 
 	if (!joinScreen || !gameScreen) return;
 
-	const hasJoined = currentState.players.some((p) => p.id === myPlayerId);
+	const hasJoined = currentState.spectators.some((s) => s.id === mySpectatorId);
 	joinScreen.classList.toggle("hidden", hasJoined);
 	gameScreen.classList.toggle("hidden", !hasJoined);
 
@@ -733,10 +820,10 @@ const render = (): void => {
 		isPixiInitializing = true;
 		initPixi().then(() => {
 			isPixiInitializing = false;
-			if (currentState) drawWheel(currentState.players);
+			if (currentState) drawWheel(currentState.candidates);
 		});
 	} else if (pixiApp) {
-		drawWheel(currentState.players);
+		drawWheel(currentState.candidates);
 	}
 
 	// Update phase indicator
@@ -754,8 +841,10 @@ const render = (): void => {
 		wheelGlowFilter.outerStrength = 1.5;
 	}
 
-	renderPlayerList();
-	renderHostControls();
+	renderAdminControls();
+	renderCandidatesList();
+	renderSpectatorsList();
+	renderActionControls();
 	renderCountdown();
 	renderResultOverlay();
 };

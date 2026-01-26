@@ -1,6 +1,6 @@
 // Game state management - pure functions for state transitions
 
-import type { GameState, Player } from "../shared/types";
+import type { Candidate, GameState, Spectator } from "../shared/types";
 
 // ============================================
 // Initial State
@@ -8,80 +8,111 @@ import type { GameState, Player } from "../shared/types";
 
 /** Creates the initial game state */
 export const createInitialState = (): GameState => ({
-	players: [],
+	spectators: [],
+	candidates: [],
 	phase: "waiting",
 	winner: null,
 	bettingEndsAt: null,
 });
 
 // ============================================
-// State Transition Functions
+// Spectator Functions
 // ============================================
 
-/** Adds a player to the game. First player becomes host. */
-export const addPlayer = (state: GameState, player: Player): GameState => {
-	const isFirstPlayer = state.players.length === 0;
-	const newPlayer: Player = {
-		...player,
-		isHost: isFirstPlayer,
-	};
-	return {
-		...state,
-		players: [...state.players, newPlayer],
-	};
-};
+/** Adds a spectator to the game. */
+export const addSpectator = (state: GameState, spectator: Spectator): GameState => ({
+	...state,
+	spectators: [...state.spectators, spectator],
+});
 
-/** Removes a player from the game. If host leaves, next player becomes host. Also removes bets on the removed player. */
-export const removePlayer = (state: GameState, playerId: string): GameState => {
-	const playerIndex = state.players.findIndex((p) => p.id === playerId);
-	if (playerIndex === -1) {
+/** Removes a spectator from the game. */
+export const removeSpectator = (state: GameState, spectatorId: string): GameState => {
+	const spectatorExists = state.spectators.some((s) => s.id === spectatorId);
+	if (!spectatorExists) {
 		return state;
 	}
 
-	const removedPlayer = state.players[playerIndex];
-	const remainingPlayers = state.players.filter((p) => p.id !== playerId);
-
-	// Clear bets that were placed on the removed player
-	const playersWithClearedBets = remainingPlayers.map((p) =>
-		p.bet === playerId ? { ...p, bet: null } : p,
-	);
-
-	// If removed player was host, assign host to the next player
-	const finalPlayers =
-		removedPlayer.isHost && playersWithClearedBets.length > 0
-			? playersWithClearedBets.map((p, index) => (index === 0 ? { ...p, isHost: true } : p))
-			: playersWithClearedBets;
-
 	return {
 		...state,
-		players: finalPlayers,
+		spectators: state.spectators.filter((s) => s.id !== spectatorId),
 	};
 };
 
-/** Places a bet for a player on another player. Only works during betting phase. */
-export const placeBet = (state: GameState, playerId: string, targetId: string): GameState => {
+// ============================================
+// Candidate Functions
+// ============================================
+
+/** Adds candidates from newline-separated text. */
+export const addCandidates = (state: GameState, namesText: string): GameState => {
+	// Parse newline-separated names, trim whitespace, filter empty
+	const names = namesText
+		.split("\n")
+		.map((n) => n.trim())
+		.filter((n) => n.length > 0);
+
+	if (names.length === 0) {
+		return state;
+	}
+
+	const newCandidates: readonly Candidate[] = names.map((name) => ({
+		id: crypto.randomUUID(),
+		name,
+	}));
+
+	return {
+		...state,
+		candidates: [...state.candidates, ...newCandidates],
+	};
+};
+
+/** Removes a candidate. Also clears any bets on this candidate. */
+export const removeCandidate = (state: GameState, candidateId: string): GameState => {
+	const candidateExists = state.candidates.some((c) => c.id === candidateId);
+	if (!candidateExists) {
+		return state;
+	}
+
+	return {
+		...state,
+		candidates: state.candidates.filter((c) => c.id !== candidateId),
+		spectators: state.spectators.map((s) => (s.bet === candidateId ? { ...s, bet: null } : s)),
+	};
+};
+
+// ============================================
+// Betting Functions
+// ============================================
+
+/** Places a bet for a spectator on a candidate. Only works during betting phase. */
+export const placeBet = (state: GameState, spectatorId: string, candidateId: string): GameState => {
 	// Can only bet during betting phase
 	if (state.phase !== "betting") {
 		return state;
 	}
 
-	// Target player must exist
-	const targetExists = state.players.some((p) => p.id === targetId);
-	if (!targetExists) {
+	// Candidate must exist
+	const candidateExists = state.candidates.some((c) => c.id === candidateId);
+	if (!candidateExists) {
 		return state;
 	}
 
-	// Player must exist
-	const playerExists = state.players.some((p) => p.id === playerId);
-	if (!playerExists) {
+	// Spectator must exist
+	const spectatorExists = state.spectators.some((s) => s.id === spectatorId);
+	if (!spectatorExists) {
 		return state;
 	}
 
 	return {
 		...state,
-		players: state.players.map((p) => (p.id === playerId ? { ...p, bet: targetId } : p)),
+		spectators: state.spectators.map((s) =>
+			s.id === spectatorId ? { ...s, bet: candidateId } : s,
+		),
 	};
 };
+
+// ============================================
+// Phase Transition Functions
+// ============================================
 
 /** Starts the betting phase with a specified end time. Only works from waiting phase. */
 export const startBetting = (state: GameState, endsAt: number): GameState => {
@@ -108,9 +139,9 @@ export const startSpinning = (state: GameState): GameState => {
 	};
 };
 
-/** Sets the winner and transitions to result phase. Winner must exist in players. */
+/** Sets the winner and transitions to result phase. Winner must exist in candidates. */
 export const setResult = (state: GameState, winnerId: string): GameState => {
-	const winnerExists = state.players.some((p) => p.id === winnerId);
+	const winnerExists = state.candidates.some((c) => c.id === winnerId);
 	if (!winnerExists) {
 		return state;
 	}
@@ -121,66 +152,57 @@ export const setResult = (state: GameState, winnerId: string): GameState => {
 	};
 };
 
-/** Resets the game to waiting phase, clears bets and winner, keeps players. */
+/** Resets the game to waiting phase, clears bets and winner, keeps spectators and candidates. */
 export const resetGame = (state: GameState): GameState => ({
 	...state,
 	phase: "waiting",
 	winner: null,
 	bettingEndsAt: null,
-	players: state.players.map((p) => ({ ...p, bet: null })),
+	spectators: state.spectators.map((s) => ({ ...s, bet: null })),
 });
 
 // ============================================
 // Winner Selection
 // ============================================
 
-/** Selects a random player ID from the players array. Returns null if no players. */
+/** Selects a random candidate ID from the candidates array. Returns null if no candidates. */
 export const selectRandomWinner = (
-	players: readonly Player[],
+	candidates: readonly Candidate[],
 	randomValue: number,
 ): string | null => {
-	if (players.length === 0) {
+	if (candidates.length === 0) {
 		return null;
 	}
-	const randomIndex = Math.floor(randomValue * players.length);
-	return players[randomIndex].id;
+	const randomIndex = Math.floor(randomValue * candidates.length);
+	return candidates[randomIndex].id;
 };
 
 // ============================================
 // Validation Helpers
 // ============================================
 
-/** Returns true if the player can place a bet (betting phase and player exists). */
-export const canPlaceBet = (state: GameState, playerId: string): boolean => {
+/** Returns true if the spectator can place a bet (betting phase and spectator exists). */
+export const canPlaceBet = (state: GameState, spectatorId: string): boolean => {
 	if (state.phase !== "betting") {
 		return false;
 	}
-	return state.players.some((p) => p.id === playerId);
+	return state.spectators.some((s) => s.id === spectatorId);
 };
 
-/** Returns true if the player can start betting (waiting phase and player is host). */
-export const canStartBetting = (state: GameState, playerId: string): boolean => {
+/** Returns true if betting can start (waiting phase and has candidates). */
+export const canStartBetting = (state: GameState): boolean => {
 	if (state.phase !== "waiting") {
 		return false;
 	}
-	const player = state.players.find((p) => p.id === playerId);
-	return player?.isHost === true;
+	return state.candidates.length > 0;
 };
 
-/** Returns true if the player can spin (betting phase and player is host). */
-export const canSpin = (state: GameState, playerId: string): boolean => {
-	if (state.phase !== "betting") {
-		return false;
-	}
-	const player = state.players.find((p) => p.id === playerId);
-	return player?.isHost === true;
+/** Returns true if the wheel can spin (betting phase). */
+export const canSpin = (state: GameState): boolean => {
+	return state.phase === "betting";
 };
 
-/** Returns true if the player can reset the game (result phase and player is host). */
-export const canReset = (state: GameState, playerId: string): boolean => {
-	if (state.phase !== "result") {
-		return false;
-	}
-	const player = state.players.find((p) => p.id === playerId);
-	return player?.isHost === true;
+/** Returns true if the game can be reset (result phase). */
+export const canReset = (state: GameState): boolean => {
+	return state.phase === "result";
 };

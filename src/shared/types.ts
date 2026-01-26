@@ -4,12 +4,17 @@
 // Core Game Types
 // ============================================
 
-/** A player in the game */
-export type Player = {
+/** A candidate is a name on the wheel (can be added by admin) */
+export type Candidate = {
 	readonly id: string;
 	readonly name: string;
-	readonly bet: string | null; // ID of player they bet on
-	readonly isHost: boolean;
+};
+
+/** A spectator is a connected user who can watch and bet */
+export type Spectator = {
+	readonly id: string;
+	readonly name: string;
+	readonly bet: string | null; // Candidate ID they bet on
 };
 
 /** Game phase - controls what actions are available */
@@ -17,9 +22,10 @@ export type Phase = "waiting" | "betting" | "spinning" | "result";
 
 /** Complete game state - broadcast to all clients on every change */
 export type GameState = {
-	readonly players: readonly Player[];
+	readonly spectators: readonly Spectator[];
+	readonly candidates: readonly Candidate[];
 	readonly phase: Phase;
-	readonly winner: string | null; // Player ID
+	readonly winner: string | null; // Candidate ID
 	readonly bettingEndsAt: number | null; // Unix timestamp
 };
 
@@ -60,6 +66,16 @@ export type ResetMessage = {
 	readonly type: "reset";
 };
 
+export type AddCandidatesMessage = {
+	readonly type: "addCandidates";
+	readonly names: string; // Newline-separated names from textarea
+};
+
+export type RemoveCandidateMessage = {
+	readonly type: "removeCandidate";
+	readonly candidateId: string;
+};
+
 /** All possible messages from client to server */
 export type ClientMessage =
 	| CreateRoomMessage
@@ -67,7 +83,9 @@ export type ClientMessage =
 	| PlaceBetMessage
 	| StartBettingMessage
 	| SpinMessage
-	| ResetMessage;
+	| ResetMessage
+	| AddCandidatesMessage
+	| RemoveCandidateMessage;
 
 // ============================================
 // Server -> Client Messages
@@ -89,7 +107,7 @@ export type RoomErrorMessage = {
 export type StateMessage = {
 	readonly type: "state";
 	readonly state: GameState;
-	readonly playerId: string;
+	readonly spectatorId: string;
 	readonly isAdmin: boolean;
 };
 

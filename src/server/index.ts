@@ -1,6 +1,29 @@
 import { resolve } from "node:path";
 import type { ServerWebSocket } from "bun";
-import type { ServerMessage } from "../shared/types";
+import type {
+	ClientMessage,
+	ErrorMessage,
+	JoinMessage,
+	PlaceBetMessage,
+	ServerMessage,
+	SpinResultMessage,
+	StateMessage,
+} from "../shared/types";
+import {
+	addPlayer,
+	canPlaceBet,
+	canReset,
+	canSpin,
+	canStartBetting,
+	createInitialState,
+	placeBet,
+	removePlayer,
+	resetGame,
+	selectRandomWinner,
+	setResult,
+	startBetting,
+	startSpinning,
+} from "./game";
 
 // WebSocket data type - stores player ID for each connection
 type WebSocketData = {
@@ -9,6 +32,77 @@ type WebSocketData = {
 
 // Store active WebSocket connections: playerId -> WebSocket
 const connections = new Map<string, ServerWebSocket<WebSocketData>>();
+
+// Game state - single mutable reference at module level
+let gameState = createInitialState();
+
+// Store active timer for cleanup
+let spinTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Constants
+const BETTING_DURATION_MS = 60000; // 60 seconds
+const SPIN_DURATION_MS = 5000; // 5 seconds
+
+// Parse and validate client messages
+const parseClientMessage = (raw: string): ClientMessage | null => {
+	try {
+		const msg = JSON.parse(raw);
+		// Validate message structure
+		if (typeof msg !== "object" || msg === null || !msg.type) return null;
+		// Validate each message type
+		switch (msg.type) {
+			case "join":
+				if (typeof msg.name !== "string") return null;
+				return msg as JoinMessage;
+			case "placeBet":
+				if (typeof msg.targetId !== "string") return null;
+				return msg as PlaceBetMessage;
+			case "startBetting":
+				return msg as ClientMessage;
+			case "spin":
+				return msg as ClientMessage;
+			case "reset":
+				return msg as ClientMessage;
+			default:
+				return null;
+		}
+	} catch {
+		return null;
+	}
+};
+
+// Broadcast state to all connected clients
+const broadcastState = (): void => {
+	for (const [playerId, ws] of connections.entries()) {
+		const msg: StateMessage = { type: "state", state: gameState, playerId };
+		try {
+			ws.send(JSON.stringify(msg));
+		} catch {
+			// Connection may have closed
+		}
+	}
+};
+
+// Send error message to a specific client
+const sendError = (
+	ws: ServerWebSocket<WebSocketData>,
+	message: string,
+): void => {
+	const errorMsg: ErrorMessage = { type: "error", message };
+	try {
+		ws.send(JSON.stringify(errorMsg));
+	} catch {
+		// Connection may have closed
+	}
+};
+
+// Clear all active timers
+const clearTimers = (): void => {
+	if (spinTimer !== null) {
+		clearTimeout(spinTimer);
+		spinTimer = null;
+	}
+};
 
 // Check if a path is safe (prevents directory traversal attacks)
 const isPathSafe = (requestedPath: string, baseDir: string): boolean => {
@@ -25,6 +119,113 @@ const broadcast = (message: ServerMessage): void => {
 			ws.send(data);
 		} catch {
 			// Connection may have closed
+		}
+	}
+};
+
+// Handle client messages
+const handleMessage = (
+	ws: ServerWebSocket<WebSocketData>,
+	message: ClientMessage,
+): void => {
+	const playerId = ws.data.playerId;
+
+	// For non-join messages, verify player has joined
+	if (message.type !== "join") {
+		const playerExists = gameState.players.some((p) => p.id === playerId);
+		if (!playerExists) {
+			sendError(ws, "You must join the game first");
+			return;
+		}
+	}
+
+	switch (message.type) {
+		case "join": {
+			// Create player and add to state
+			const player = {
+				id: playerId,
+				name: message.name,
+				bet: null,
+				isHost: false, // addPlayer will set this to true if first player
+			};
+			gameState = addPlayer(gameState, player);
+			broadcastState();
+			break;
+		}
+
+		case "placeBet": {
+			if (!canPlaceBet(gameState, playerId)) {
+				sendError(ws, "Cannot place bet at this time");
+				return;
+			}
+			gameState = placeBet(gameState, playerId, message.targetId);
+			broadcastState();
+			break;
+		}
+
+		case "startBetting": {
+			if (!canStartBetting(gameState, playerId)) {
+				sendError(ws, "Only the host can start betting during waiting phase");
+				return;
+			}
+			const bettingEndsAt = Date.now() + BETTING_DURATION_MS;
+			gameState = startBetting(gameState, bettingEndsAt);
+			broadcastState();
+			break;
+		}
+
+		case "spin": {
+			if (!canSpin(gameState, playerId)) {
+				sendError(ws, "Only the host can spin during betting phase");
+				return;
+			}
+
+			// Transition to spinning phase
+			gameState = startSpinning(gameState);
+
+			// Select random winner
+			const winnerId = selectRandomWinner(gameState.players, Math.random());
+			if (winnerId === null) {
+				sendError(ws, "Cannot spin with no players");
+				return;
+			}
+
+			// Broadcast spin result (triggers wheel animation on clients)
+			const spinResultMsg: SpinResultMessage = {
+				type: "spinResult",
+				winnerId,
+			};
+			broadcast(spinResultMsg);
+			broadcastState();
+
+			// After spin animation completes, set result and broadcast final state
+			spinTimer = setTimeout(() => {
+				spinTimer = null;
+				// Check if winner still exists before setting result
+				const winnerExists = gameState.players.some((p) => p.id === winnerId);
+				if (winnerExists) {
+					gameState = setResult(gameState, winnerId);
+				} else {
+					// Winner disconnected - reset to waiting phase
+					gameState = resetGame(gameState);
+				}
+				broadcastState();
+			}, SPIN_DURATION_MS);
+			break;
+		}
+
+		case "reset": {
+			if (!canReset(gameState, playerId)) {
+				sendError(ws, "Only the host can reset during result phase");
+				return;
+			}
+
+			// Clear any active timers
+			clearTimers();
+
+			gameState = resetGame(gameState);
+			broadcastState();
+			break;
 		}
 	}
 };
@@ -121,14 +322,29 @@ const server = Bun.serve<WebSocketData>({
 		},
 
 		message(ws, message) {
-			// TODO: Handle incoming messages in future tasks
-			console.log(`Message from ${ws.data.playerId}:`, message);
+			const raw = typeof message === "string" ? message : message.toString();
+			const parsed = parseClientMessage(raw);
+			if (parsed === null) {
+				sendError(ws, "Invalid message format");
+				return;
+			}
+			handleMessage(ws, parsed);
 		},
 
 		close(ws) {
 			const playerId = ws.data.playerId;
 			connections.delete(playerId);
 			console.log(`Client disconnected: ${playerId}`);
+
+			gameState = removePlayer(gameState, playerId);
+
+			// If no players left, clear timers and reset
+			if (gameState.players.length === 0) {
+				clearTimers();
+				gameState = createInitialState();
+			}
+
+			broadcastState();
 		},
 	},
 });

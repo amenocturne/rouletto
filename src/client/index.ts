@@ -228,12 +228,13 @@ const showRoomError = (_errorMessage: string): void => {
 		</div>
 	`;
 
-	const goHomeBtn = document.getElementById("go-home-btn");
+	const goHomeBtn = document.getElementById("go-home-btn") as HTMLButtonElement | null;
 	if (goHomeBtn) {
 		goHomeBtn.onclick = () => {
 			window.history.pushState({}, "", "/");
 			showLandingPage();
 		};
+		goHomeBtn.focus();
 	}
 };
 
@@ -267,10 +268,10 @@ const showLandingPage = (): void => {
 		</div>
 	`;
 
-	const createBtn = document.getElementById("create-room-btn");
+	const createBtn = document.getElementById("create-room-btn") as HTMLButtonElement | null;
 	if (createBtn) {
 		createBtn.onclick = () => {
-			(createBtn as HTMLButtonElement).disabled = true;
+			createBtn.disabled = true;
 			connect();
 			// Wait for connection, then send createRoom
 			const checkConnection = (): void => {
@@ -282,6 +283,7 @@ const showLandingPage = (): void => {
 			};
 			checkConnection();
 		};
+		createBtn.focus();
 	}
 };
 
@@ -386,6 +388,9 @@ const setupJoinForm = (): void => {
 			send({ type: "join", name, joinAsPlayer });
 		}
 	});
+
+	// Auto-focus the name input on page load
+	input.focus();
 };
 
 // Helper to prevent XSS

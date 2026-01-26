@@ -112,7 +112,12 @@ body::after {
 	content: "";
 	position: fixed;
 	inset: 0;
-	background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.4) 80%, rgba(0, 0, 0, 0.7) 100%);
+	background: radial-gradient(
+		ellipse at center,
+		transparent 40%,
+		rgba(0, 0, 0, 0.4) 80%,
+		rgba(0, 0, 0, 0.7) 100%
+	);
 	pointer-events: none;
 	z-index: 0;
 }
@@ -193,7 +198,12 @@ h3,
 	content: "";
 	position: absolute;
 	inset: 0;
-	background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.4) 80%, rgba(0, 0, 0, 0.7) 100%);
+	background: radial-gradient(
+		ellipse at center,
+		transparent 40%,
+		rgba(0, 0, 0, 0.4) 80%,
+		rgba(0, 0, 0, 0.7) 100%
+	);
 }
 
 #loading-overlay.fade-out {
@@ -735,6 +745,10 @@ button:disabled {
 	cursor: not-allowed;
 }
 
+button:focus {
+	outline: none;
+}
+
 /* Secondary button style */
 button.secondary {
 	background: linear-gradient(180deg, var(--felt-light) 0%, var(--felt-medium) 100%);
@@ -1031,7 +1045,9 @@ button.loading::after {
 		inset 0 1px 0 rgba(255, 215, 0, 0.15),
 		inset 0 -2px 8px rgba(0, 0, 0, 0.3),
 		0 4px 12px rgba(0, 0, 0, 0.4);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
 }
 
 /* Hover effect for add candidate panel */
@@ -1278,7 +1294,9 @@ button.loading::after {
 	border-radius: 4px;
 	color: var(--ivory);
 	cursor: pointer;
-	transition: background 0.15s ease, border-color 0.15s ease;
+	transition:
+		background 0.15s ease,
+		border-color 0.15s ease;
 	/* Position on the right side of the card - use top/bottom to center without transform */
 	position: absolute;
 	right: 0.75rem;
@@ -1924,7 +1942,8 @@ button.loading::after {
 	bottom: 0;
 	width: 24px;
 	height: 90px;
-	background: linear-gradient(90deg,
+	background: linear-gradient(
+		90deg,
 		#1a0f08 0%,
 		#2a1810 15%,
 		#3a2515 50%,
@@ -1942,25 +1961,21 @@ button.loading::after {
 }
 
 .lever-track::before {
-	content: '';
+	content: "";
 	position: absolute;
 	left: 50%;
 	top: 8px;
 	bottom: 8px;
 	width: 6px;
 	transform: translateX(-50%);
-	background: linear-gradient(90deg,
-		#0a0605 0%,
-		#151010 50%,
-		#0a0605 100%
-	);
+	background: linear-gradient(90deg, #0a0605 0%, #151010 50%, #0a0605 100%);
 	border-radius: 3px;
 	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
 /* Decorative brass rivets on the track */
 .lever-track::after {
-	content: '';
+	content: "";
 	position: absolute;
 	top: 6px;
 	left: 3px;
@@ -2024,7 +2039,8 @@ button.loading::after {
 .lever-ball {
 	width: 40px;
 	height: 40px;
-	background: radial-gradient(circle at 35% 35%,
+	background: radial-gradient(
+		circle at 35% 35%,
 		#ff6666 0%,
 		#ff3333 20%,
 		#cc0000 50%,
@@ -2038,20 +2054,23 @@ button.loading::after {
 		inset 4px 4px 8px rgba(255, 255, 255, 0.1),
 		0 6px 12px rgba(0, 0, 0, 0.5),
 		0 2px 4px rgba(0, 0, 0, 0.3);
-	transition: transform 0.15s ease, box-shadow 0.15s ease;
+	transition:
+		transform 0.15s ease,
+		box-shadow 0.15s ease;
 	position: relative;
 	z-index: 2;
 }
 
 /* Glossy highlight on ball */
 .lever-ball::before {
-	content: '';
+	content: "";
 	position: absolute;
 	top: 6px;
 	left: 8px;
 	width: 12px;
 	height: 8px;
-	background: radial-gradient(ellipse at center,
+	background: radial-gradient(
+		ellipse at center,
 		rgba(255, 255, 255, 0.5) 0%,
 		rgba(255, 255, 255, 0) 100%
 	);
@@ -2062,7 +2081,8 @@ button.loading::after {
 .lever-stick {
 	width: 10px;
 	height: 70px;
-	background: linear-gradient(90deg,
+	background: linear-gradient(
+		90deg,
 		#666 0%,
 		#999 20%,
 		#ddd 45%,
@@ -2120,33 +2140,26 @@ button.loading::after {
 
 /* Brass collar where stick meets ball */
 .lever-stick::before {
-	content: '';
+	content: "";
 	position: absolute;
 	top: 0;
 	left: -3px;
 	width: 16px;
 	height: 8px;
-	background: linear-gradient(180deg,
-		#d4a84b 0%,
-		#a07830 50%,
-		#806020 100%
-	);
+	background: linear-gradient(180deg, #d4a84b 0%, #a07830 50%, #806020 100%);
 	border-radius: 3px;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 /* Bottom cap of stick */
 .lever-stick::after {
-	content: '';
+	content: "";
 	position: absolute;
 	bottom: 0;
 	left: -2px;
 	width: 14px;
 	height: 6px;
-	background: linear-gradient(180deg,
-		#888 0%,
-		#555 100%
-	);
+	background: linear-gradient(180deg, #888 0%, #555 100%);
 	border-radius: 0 0 4px 4px;
 }
 

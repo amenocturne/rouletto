@@ -4,20 +4,32 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Casino Wheel</title>
-	<style>
-		* {
-			margin: 0;
-			padding: 0;
-			box-sizing: border-box;
-		}
-		body {
-			width: 100vw;
-			height: 100vh;
-			overflow: hidden;
-		}
-	</style>
+	<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-	<script type="module" src="/dist/index.js"></script>
+	<div id="app">
+		<!-- Join form - shown initially -->
+		<div id="join-screen" class="screen">
+			<h1>Casino Wheel</h1>
+			<form id="join-form">
+				<input type="text" id="name-input" placeholder="Enter your name" required maxlength="20">
+				<button type="submit">Join Game</button>
+			</form>
+		</div>
+
+		<!-- Game screen - shown after joining -->
+		<div id="game-screen" class="screen hidden">
+			<div id="game-header">
+				<h2>Players</h2>
+				<div id="phase-indicator"></div>
+				<div id="countdown"></div>
+			</div>
+			<div id="player-list"></div>
+			<div id="wheel-container"></div>
+			<div id="host-controls"></div>
+			<div id="result-overlay" class="hidden"></div>
+		</div>
+	</div>
+	<script src="/dist/index.js"></script>
 </body>
 </html>

@@ -84,10 +84,7 @@ const broadcastState = (): void => {
 };
 
 // Send error message to a specific client
-const sendError = (
-	ws: ServerWebSocket<WebSocketData>,
-	message: string,
-): void => {
+const sendError = (ws: ServerWebSocket<WebSocketData>, message: string): void => {
 	const errorMsg: ErrorMessage = { type: "error", message };
 	try {
 		ws.send(JSON.stringify(errorMsg));
@@ -124,10 +121,7 @@ const broadcast = (message: ServerMessage): void => {
 };
 
 // Handle client messages
-const handleMessage = (
-	ws: ServerWebSocket<WebSocketData>,
-	message: ClientMessage,
-): void => {
+const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessage): void => {
 	const playerId = ws.data.playerId;
 
 	// For non-join messages, verify player has joined
@@ -246,10 +240,7 @@ const getContentType = (path: string): string => {
 };
 
 // Serve static file helper with path safety check
-const serveFile = async (
-	filePath: string,
-	baseDir: string,
-): Promise<Response> => {
+const serveFile = async (filePath: string, baseDir: string): Promise<Response> => {
 	// Validate path to prevent directory traversal
 	if (!isPathSafe(filePath, baseDir)) {
 		return new Response("Forbidden", { status: 403 });
@@ -290,6 +281,11 @@ const server = Bun.serve<WebSocketData>({
 		// Serve static files
 		if (pathname === "/" || pathname === "/index.html") {
 			return serveFile("src/client/index.html", "src/client");
+		}
+
+		// Serve CSS from public/
+		if (pathname === "/styles.css") {
+			return serveFile("public/styles.css", "public");
 		}
 
 		// Serve bundled JS from dist/

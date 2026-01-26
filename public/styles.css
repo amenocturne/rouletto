@@ -177,3 +177,117 @@ button:hover {
 #wheel-container canvas {
 	border-radius: 50%;
 }
+
+/* Results Overlay */
+#result-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.9);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+	animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.result-content {
+	text-align: center;
+	padding: 3rem;
+	background: linear-gradient(135deg, #2a2a4e 0%, #1a1a2e 100%);
+	border-radius: 16px;
+	border: 2px solid #4a9;
+	box-shadow: 0 0 40px rgba(74, 153, 153, 0.4);
+	max-width: 500px;
+	width: 90%;
+}
+
+.result-title {
+	font-size: 2rem;
+	margin-bottom: 1rem;
+	color: #ffd700;
+}
+
+.winner-name {
+	font-size: 3rem;
+	font-weight: bold;
+	color: #4a9;
+	margin: 1.5rem 0;
+	text-shadow: 0 0 20px rgba(74, 153, 153, 0.8);
+	animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(1.05);
+	}
+}
+
+.correct-guessers {
+	margin: 2rem 0;
+	padding: 1rem;
+	background: rgba(255, 215, 0, 0.1);
+	border-radius: 8px;
+}
+
+.correct-guessers h3 {
+	color: #ffd700;
+	margin-bottom: 0.5rem;
+}
+
+.correct-guessers ul {
+	list-style: none;
+	padding: 0;
+}
+
+.correct-guessers li {
+	padding: 0.25rem 0;
+	color: #4a9;
+}
+
+.no-guessers {
+	color: #888;
+	font-style: italic;
+	margin: 2rem 0;
+}
+
+.play-again-btn {
+	padding: 1rem 2rem;
+	font-size: 1.25rem;
+	background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+	border: none;
+	border-radius: 8px;
+	color: #000;
+	cursor: pointer;
+	font-weight: bold;
+	margin-top: 1rem;
+	transition:
+		transform 0.2s,
+		box-shadow 0.2s;
+}
+
+.play-again-btn:hover {
+	transform: scale(1.05);
+	box-shadow: 0 4px 20px rgba(255, 215, 0, 0.4);
+}
+
+.waiting-text {
+	color: #888;
+	font-style: italic;
+	margin-top: 1rem;
+}

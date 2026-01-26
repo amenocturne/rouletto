@@ -531,6 +531,75 @@ const getPhaseText = (phase: Phase): string => {
 	}
 };
 
+// Render results overlay
+const renderResultOverlay = (): void => {
+	const overlay = document.getElementById("result-overlay");
+	if (!overlay || !currentState) return;
+
+	// Only show in result phase
+	if (currentState.phase !== "result") {
+		overlay.classList.add("hidden");
+		overlay.innerHTML = "";
+		return;
+	}
+
+	// Don't re-render if already showing (avoid flicker)
+	if (!overlay.classList.contains("hidden") && overlay.innerHTML !== "") {
+		return;
+	}
+
+	overlay.classList.remove("hidden");
+
+	// Find winner
+	const winner = currentState.players.find((p) => p.id === currentState.winner);
+	if (!winner) return;
+
+	// Find players who guessed correctly
+	const correctGuessers = currentState.players.filter(
+		(p) => p.bet === currentState.winner,
+	);
+
+	// Check if current player is host
+	const me = currentState.players.find((p) => p.id === myPlayerId);
+	const isHost = me?.isHost ?? false;
+
+	overlay.innerHTML = `
+		<div class="result-content">
+			<h1 class="result-title">Next Host</h1>
+			<div class="winner-name">${escapeHtml(winner.name)}</div>
+
+			${
+				correctGuessers.length > 0
+					? `
+				<div class="correct-guessers">
+					<h3>Correct Guesses:</h3>
+					<ul>
+						${correctGuessers.map((p) => `<li>${escapeHtml(p.name)}${p.id === myPlayerId ? " (You!)" : ""}</li>`).join("")}
+					</ul>
+				</div>
+			`
+					: '<p class="no-guessers">No one guessed correctly!</p>'
+			}
+
+			${
+				isHost
+					? `
+				<button class="play-again-btn" id="play-again-btn">Play Again</button>
+			`
+					: '<p class="waiting-text">Waiting for host to start new round...</p>'
+			}
+		</div>
+	`;
+
+	// Add event listener for play again button
+	const playAgainBtn = document.getElementById("play-again-btn");
+	if (playAgainBtn) {
+		playAgainBtn.onclick = () => {
+			send({ type: "reset" });
+		};
+	}
+};
+
 // Main render function
 const render = (): void => {
 	if (!currentState) return;
@@ -564,9 +633,19 @@ const render = (): void => {
 		phaseIndicator.textContent = getPhaseText(currentState.phase);
 	}
 
+	// If phase is waiting, reset glow to normal
+	if (currentState.phase === "waiting" && wheelGlowFilter && pixiApp) {
+		if (glowTickerCallback) {
+			pixiApp.ticker.remove(glowTickerCallback);
+			glowTickerCallback = null;
+		}
+		wheelGlowFilter.outerStrength = 1.5;
+	}
+
 	renderPlayerList();
 	renderHostControls();
 	renderCountdown();
+	renderResultOverlay();
 };
 
 // Initialize on load

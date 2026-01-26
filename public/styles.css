@@ -863,7 +863,7 @@ button.loading::after {
 	display: grid;
 	grid-template-columns: auto 320px;
 	gap: 3rem;
-	align-items: center;
+	align-items: start;
 	max-width: 1400px;
 	width: 100%;
 }
@@ -1155,36 +1155,29 @@ button.loading::after {
 .remove-candidate-btn {
 	padding: 0.25rem 0.5rem;
 	font-size: 0.75rem;
-	background: linear-gradient(180deg, var(--leather-red) 0%, var(--leather-dark) 100%);
+	background: var(--leather-red);
 	border: 2px solid var(--wood-dark);
 	border-radius: 4px;
 	color: var(--ivory);
 	cursor: pointer;
-	box-shadow:
-		inset 0 1px 0 rgba(255, 255, 255, 0.1),
-		0 2px 4px rgba(0, 0, 0, 0.2);
-	transition: all 0.2s ease;
-	/* Position on the right side of the card */
+	transition: background 0.15s ease, border-color 0.15s ease;
+	/* Position on the right side of the card - use top/bottom to center without transform */
 	position: absolute;
 	right: 0.75rem;
-	top: 50%;
-	transform: translateY(-50%) translateZ(1px);
+	top: 0;
+	bottom: 0;
+	margin: auto;
+	height: fit-content;
 	z-index: 2;
 }
 
 .remove-candidate-btn:hover {
-	background: linear-gradient(180deg, #8b3a3a 0%, var(--leather-red) 100%);
+	background: #cc4444;
 	border-color: var(--brass);
-	box-shadow:
-		inset 0 1px 0 rgba(255, 255, 255, 0.2),
-		0 3px 6px rgba(0, 0, 0, 0.3);
 }
 
 .remove-candidate-btn:active {
-	transform: translateY(-50%) translateZ(1px) scale(0.95);
-	box-shadow:
-		inset 0 1px 0 rgba(255, 255, 255, 0.1),
-		0 1px 2px rgba(0, 0, 0, 0.2);
+	background: #aa3333;
 }
 
 /* Spectators section - subtle area on felt */
@@ -1274,7 +1267,7 @@ button.loading::after {
 	display: flex;
 	justify-content: center;
 	/* Reserve space for the lever to prevent wheel jumping */
-	min-height: 200px;
+	min-height: 240px;
 	align-items: flex-start;
 }
 
@@ -1286,10 +1279,7 @@ button.loading::after {
 	text-transform: uppercase;
 	letter-spacing: 0.1em;
 	color: var(--brass-light);
-}
-
-#phase-indicator:empty {
-	display: none;
+	min-height: 2rem;
 }
 
 /* Betting indicator */
@@ -1341,6 +1331,7 @@ button.loading::after {
 	animation: countdownPulse 1s ease-in-out infinite;
 	text-align: center;
 	margin: 1rem 0;
+	min-height: 3rem;
 }
 
 @keyframes countdownPulse {

@@ -848,31 +848,25 @@ const drawWheel = (candidates: readonly Candidate[]): void => {
 		peg.stroke({ color: 0x000000, width: 1 });
 		wheelContainer.addChild(peg);
 
-		// Player name text
+		// Player name text - radiating outward from center
 		const midAngle = startAngle + segmentAngle / 2;
-		const textRadius = radius * 0.6;
+		const textStartRadius = radius * 0.25; // Start near center
 		const text = new PIXI.Text({
 			text: candidate.name.slice(0, 12), // Truncate long names
 			style: {
 				fontFamily: "Arial Black, Arial",
-				fontSize: Math.max(10, Math.min(18, 140 / candidates.length)),
+				fontSize: 22,
 				fill: 0xffffff,
 				fontWeight: "bold",
 				stroke: { color: 0x000000, width: 3 },
 			},
 		});
-		text.anchor.set(0.5);
-		text.x = Math.cos(midAngle) * textRadius;
-		text.y = Math.sin(midAngle) * textRadius;
-		// Rotate text to be readable (flip if on bottom half of wheel)
-		let textRotation = midAngle + Math.PI / 2;
-		// Normalize angle to check if text would be upside down
-		// Text is upside down when midAngle points to bottom half (between π/2 and 3π/2)
-		const normalizedAngle = ((midAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-		if (normalizedAngle >= Math.PI / 2 && normalizedAngle <= (3 * Math.PI) / 2) {
-			textRotation += Math.PI; // Flip text to be readable
-		}
-		text.rotation = textRotation;
+		// Anchor at left-center so text starts from this point and goes right
+		text.anchor.set(0, 0.5);
+		text.x = Math.cos(midAngle) * textStartRadius;
+		text.y = Math.sin(midAngle) * textStartRadius;
+		// Rotate to point outward from center
+		text.rotation = midAngle;
 		wheelContainer.addChild(text);
 	}
 

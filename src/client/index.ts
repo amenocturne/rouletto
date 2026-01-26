@@ -334,15 +334,11 @@ const showJoinScreen = (): void => {
 				</div>
 				<div class="game-right">
 					<div class="panel-header">
-						<h3>Candidates</h3>
+						<h3>Players</h3>
 						<span id="admin-badge" class="admin-badge hidden">Admin</span>
 					</div>
 					<div id="admin-controls"></div>
 					<div id="candidates-list"></div>
-					<div id="spectators-section">
-						<h3>Watching</h3>
-						<div id="spectators-list"></div>
-					</div>
 				</div>
 			</div>
 			<div id="result-overlay" class="hidden"></div>
@@ -500,22 +496,20 @@ const renderBettingChips = (candidateId: string): string => {
 	return `<div class="chips-container">${chips}</div>`;
 };
 
-// Render candidates list (wheel entries)
+// Render players list (candidates on wheel + spectators greyed out)
 const renderCandidatesList = (): void => {
 	const container = document.getElementById("candidates-list");
 	if (!container || !currentState) return;
 
 	container.innerHTML = "";
 
-	if (currentState.candidates.length === 0) {
-		container.innerHTML =
-			'<p class="no-candidates">No candidates yet. Admin can add names above.</p>';
-		return;
-	}
-
 	const me = currentState.spectators.find((s) => s.id === mySpectatorId);
 	const canBet = currentState.phase === "betting";
 
+	// Get candidate names to identify which spectators are also candidates
+	const candidateNames = new Set(currentState.candidates.map((c) => c.name.toLowerCase()));
+
+	// Render candidates (on the wheel)
 	for (const candidate of currentState.candidates) {
 		const div = document.createElement("div");
 		div.className = "candidate-card";
@@ -555,49 +549,36 @@ const renderCandidatesList = (): void => {
 
 		container.appendChild(div);
 	}
-};
 
-// Render spectators list (connected users who are not candidates)
-const renderSpectatorsList = (): void => {
-	const container = document.getElementById("spectators-list");
-	if (!container || !currentState) return;
-
-	container.innerHTML = "";
-
-	// Get candidate names to filter out spectators who are also candidates
-	const candidateNames = new Set(currentState.candidates.map((c) => c.name.toLowerCase()));
-
-	// Filter spectators who are not candidates
+	// Render spectators who are NOT candidates (greyed out)
 	const pureSpectators = currentState.spectators.filter(
 		(s) => !candidateNames.has(s.name.toLowerCase()),
 	);
 
-	if (pureSpectators.length === 0) {
-		container.innerHTML = '<p class="no-spectators">No spectators yet.</p>';
-		return;
-	}
-
 	for (const spectator of pureSpectators) {
 		const div = document.createElement("div");
-		div.className = "spectator-card";
+		div.className = "candidate-card spectator-only";
 
 		if (spectator.id === mySpectatorId) div.classList.add("is-me");
-		if (spectator.bet !== null) div.classList.add("has-bet");
-
-		// Find candidate name if they have a bet
-		const betCandidate = spectator.bet
-			? currentState.candidates.find((c) => c.id === spectator.bet)
-			: null;
 
 		div.innerHTML = `
-			<span class="spectator-name">${escapeHtml(spectator.name)}</span>
+			<span class="candidate-name">${escapeHtml(spectator.name)}</span>
 			${spectator.id === mySpectatorId ? '<span class="you-badge">You</span>' : ""}
-			${spectator.bet !== null ? `<span class="bet-indicator" title="Bet on ${betCandidate ? escapeHtml(betCandidate.name) : "someone"}">*</span>` : ""}
 		`;
+
+		// Add interactive tilt effect (Balatro-style)
+		addTiltEffect(div);
 
 		container.appendChild(div);
 	}
+
+	// Show message if no players at all
+	if (currentState.candidates.length === 0 && pureSpectators.length === 0) {
+		container.innerHTML =
+			'<p class="no-candidates">No players yet. Admin can add names above.</p>';
+	}
 };
+
 
 // Render action controls (start betting, spin lever)
 const renderActionControls = (): void => {
@@ -1092,7 +1073,6 @@ const render = (): void => {
 
 	renderAdminControls();
 	renderCandidatesList();
-	renderSpectatorsList();
 	renderActionControls();
 	renderResultOverlay();
 };

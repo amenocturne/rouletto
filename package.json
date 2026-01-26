@@ -1,0 +1,20 @@
+{
+	"name": "casino-wheel",
+	"module": "index.ts",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"dev": "bun run src/server/index.ts",
+		"build": "bun build src/client/index.ts --outdir dist",
+		"start": "bun run src/server/index.ts",
+		"format": "bunx @biomejs/biome format --write .",
+		"lint": "bunx @biomejs/biome lint ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.12",
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	}
+}

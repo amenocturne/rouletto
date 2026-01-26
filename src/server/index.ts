@@ -5,6 +5,7 @@ import type {
 	ErrorMessage,
 	JoinMessage,
 	PlaceBetMessage,
+	PlaySoundMessage,
 	ServerMessage,
 	SpinResultMessage,
 	StateMessage,
@@ -192,9 +193,18 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 			broadcast(spinResultMsg);
 			broadcastState();
 
+			// Broadcast spin sound
+			const spinSoundMsg: PlaySoundMessage = { type: "playSound", sound: "spin" };
+			broadcast(spinSoundMsg);
+
 			// After spin animation completes, set result and broadcast final state
 			spinTimer = setTimeout(() => {
 				spinTimer = null;
+
+				// Broadcast reveal sound
+				const revealSoundMsg: PlaySoundMessage = { type: "playSound", sound: "reveal" };
+				broadcast(revealSoundMsg);
+
 				// Check if winner still exists before setting result
 				const winnerExists = gameState.players.some((p) => p.id === winnerId);
 				if (winnerExists) {

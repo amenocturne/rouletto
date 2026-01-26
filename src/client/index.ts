@@ -22,6 +22,68 @@ let isSpinning = false;
 let wheelGlowFilter: GlowFilter | null = null;
 let glowTickerCallback: (() => void) | null = null;
 
+// Audio state
+let spinSound: HTMLAudioElement | null = null;
+let revealSound: HTMLAudioElement | null = null;
+let audioEnabled = false;
+
+// Audio functions
+const initAudio = (): void => {
+	// Create audio elements
+	spinSound = new Audio("/sounds/spin.mp3");
+	spinSound.loop = true;
+
+	revealSound = new Audio("/sounds/reveal.mp3");
+
+	// Preload
+	spinSound.load();
+	revealSound.load();
+};
+
+const enableAudio = (): void => {
+	if (audioEnabled) return;
+
+	const unlock = (): void => {
+		if (spinSound) {
+			spinSound
+				.play()
+				.then(() => {
+					spinSound?.pause();
+					if (spinSound) spinSound.currentTime = 0;
+					audioEnabled = true;
+					console.log("Audio unlocked");
+					document.removeEventListener("click", unlock);
+					document.removeEventListener("touchstart", unlock);
+				})
+				.catch(() => {
+					// Keep trying on next interaction
+				});
+		}
+	};
+
+	document.addEventListener("click", unlock);
+	document.addEventListener("touchstart", unlock);
+};
+
+const playSpinSound = (): void => {
+	if (!audioEnabled || !spinSound) return;
+	spinSound.currentTime = 0;
+	spinSound.play().catch((e) => console.warn("Spin sound failed:", e));
+};
+
+const stopSpinSound = (): void => {
+	if (!spinSound) return;
+	spinSound.pause();
+	spinSound.currentTime = 0;
+};
+
+const playRevealSound = (): void => {
+	if (!audioEnabled || !revealSound) return;
+	stopSpinSound();
+	revealSound.currentTime = 0;
+	revealSound.play().catch((e) => console.warn("Reveal sound failed:", e));
+};
+
 // WebSocket connection
 const connect = (): void => {
 	const submitBtn = document.querySelector(
@@ -37,6 +99,7 @@ const connect = (): void => {
 	};
 	ws.onclose = () => {
 		console.log("Disconnected");
+		stopSpinSound(); // Stop any playing audio
 		// Clear countdown interval on disconnect
 		if (countdownInterval !== null) {
 			clearInterval(countdownInterval);
@@ -88,6 +151,13 @@ const handleServerMessage = (message: ServerMessage): void => {
 			break;
 		case "error":
 			alert(message.message);
+			break;
+		case "playSound":
+			if (message.sound === "spin") {
+				playSpinSound();
+			} else if (message.sound === "reveal") {
+				playRevealSound();
+			}
 			break;
 	}
 };
@@ -501,6 +571,8 @@ const render = (): void => {
 
 // Initialize on load
 const init = (): void => {
+	initAudio();
+	enableAudio();
 	connect();
 	setupJoinForm();
 };

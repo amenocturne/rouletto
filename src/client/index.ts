@@ -7,7 +7,6 @@ let currentState: GameState | null = null;
 let mySpectatorId: string | null = null;
 let isAdmin = false;
 let ws: WebSocket | null = null;
-let countdownInterval: number | null = null;
 
 // Room state
 let roomId: string | null = null;
@@ -139,11 +138,6 @@ const connect = (roomIdParam?: string): void => {
 	ws.onclose = () => {
 		console.log("Disconnected");
 		stopSpinSound(); // Stop any playing audio
-		// Clear countdown interval on disconnect
-		if (countdownInterval !== null) {
-			clearInterval(countdownInterval);
-			countdownInterval = null;
-		}
 		// Cleanup Pixi
 		if (glowTickerCallback && pixiApp) {
 			pixiApp.ticker.remove(glowTickerCallback);
@@ -297,9 +291,9 @@ const showJoinScreen = (): void => {
 		<div id="game-screen" class="screen hidden">
 			<div class="game-layout">
 				<div class="game-left">
+					<div class="wheel-title">Spin to Win</div>
 					<div id="wheel-container"></div>
 					<div id="action-controls"></div>
-					<div id="countdown"></div>
 				</div>
 				<div class="game-right">
 					<div class="panel-header">
@@ -612,38 +606,6 @@ const renderActionControls = (): void => {
 
 		container.appendChild(lever);
 	}
-};
-
-// Render countdown during betting
-const renderCountdown = (): void => {
-	const container = document.getElementById("countdown");
-	if (!container || !currentState) return;
-
-	if (countdownInterval !== null) {
-		clearInterval(countdownInterval);
-		countdownInterval = null;
-	}
-
-	if (currentState.phase !== "betting" || !currentState.bettingEndsAt) {
-		container.textContent = "";
-		return;
-	}
-
-	const bettingEndsAt = currentState.bettingEndsAt; // Capture value locally
-
-	const updateCountdown = (): void => {
-		const now = Date.now();
-		const remaining = Math.max(0, Math.ceil((bettingEndsAt - now) / 1000));
-		container.textContent = `Time remaining: ${remaining}s`;
-
-		if (remaining <= 0 && countdownInterval !== null) {
-			clearInterval(countdownInterval);
-			countdownInterval = null;
-		}
-	};
-
-	updateCountdown();
-	countdownInterval = window.setInterval(updateCountdown, 1000);
 };
 
 // Easing function for smooth deceleration
@@ -1045,7 +1007,6 @@ const render = (): void => {
 	renderCandidatesList();
 	renderSpectatorsList();
 	renderActionControls();
-	renderCountdown();
 	renderResultOverlay();
 };
 

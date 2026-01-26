@@ -23,9 +23,20 @@ export type GameState = {
 	readonly bettingEndsAt: number | null; // Unix timestamp
 };
 
+/** A room containing a game session */
+export type Room = {
+	readonly id: string;
+	readonly adminId: string;
+	readonly gameState: GameState;
+};
+
 // ============================================
 // Client -> Server Messages
 // ============================================
+
+export type CreateRoomMessage = {
+	readonly type: "createRoom";
+};
 
 export type JoinMessage = {
 	readonly type: "join";
@@ -51,6 +62,7 @@ export type ResetMessage = {
 
 /** All possible messages from client to server */
 export type ClientMessage =
+	| CreateRoomMessage
 	| JoinMessage
 	| PlaceBetMessage
 	| StartBettingMessage
@@ -61,11 +73,24 @@ export type ClientMessage =
 // Server -> Client Messages
 // ============================================
 
+/** Room created response - sent after room creation */
+export type RoomCreatedMessage = {
+	readonly type: "roomCreated";
+	readonly roomId: string;
+};
+
+/** Room error - sent when room doesn't exist */
+export type RoomErrorMessage = {
+	readonly type: "roomError";
+	readonly message: string;
+};
+
 /** Full state update - sent after every state change */
 export type StateMessage = {
 	readonly type: "state";
 	readonly state: GameState;
 	readonly playerId: string;
+	readonly isAdmin: boolean;
 };
 
 /** Spin result - triggers wheel animation on client */
@@ -87,4 +112,10 @@ export type PlaySoundMessage = {
 };
 
 /** All possible messages from server to client */
-export type ServerMessage = StateMessage | SpinResultMessage | ErrorMessage | PlaySoundMessage;
+export type ServerMessage =
+	| RoomCreatedMessage
+	| RoomErrorMessage
+	| StateMessage
+	| SpinResultMessage
+	| ErrorMessage
+	| PlaySoundMessage;

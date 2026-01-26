@@ -8,6 +8,9 @@ let myPlayerId: string | null = null;
 let ws: WebSocket | null = null;
 let countdownInterval: number | null = null;
 
+// Room state
+let roomId: string | null = null;
+
 // Pixi.js wheel state
 let pixiApp: PIXI.Application | null = null;
 let wheelContainer: PIXI.Container | null = null;
@@ -79,14 +82,19 @@ const playRevealSound = (): void => {
 };
 
 // WebSocket connection
-const connect = (): void => {
-	const submitBtn = document.querySelector("#join-form button") as HTMLButtonElement | null;
-	if (submitBtn) submitBtn.disabled = true;
+const connect = (roomIdParam?: string): void => {
+	const wsUrl = roomIdParam
+		? `ws://${window.location.host}?room=${roomIdParam}`
+		: `ws://${window.location.host}`;
 
-	ws = new WebSocket(`ws://${window.location.host}`);
+	ws = new WebSocket(wsUrl);
 
 	ws.onopen = () => {
 		console.log("Connected");
+		// Re-enable buttons if they were disabled
+		const createBtn = document.getElementById("create-room-btn") as HTMLButtonElement | null;
+		const submitBtn = document.querySelector("#join-form button") as HTMLButtonElement | null;
+		if (createBtn) createBtn.disabled = false;
 		if (submitBtn) submitBtn.disabled = false;
 	};
 	ws.onclose = () => {
@@ -133,6 +141,16 @@ const connect = (): void => {
 // Message handler
 const handleServerMessage = (message: ServerMessage): void => {
 	switch (message.type) {
+		case "roomCreated":
+			roomId = message.roomId;
+			// Update URL without reload
+			window.history.pushState({}, "", `/room/${roomId}`);
+			// Show join screen to enter name
+			showJoinScreen();
+			break;
+		case "roomError":
+			showRoomError(message.message);
+			break;
 		case "state":
 			myPlayerId = message.playerId;
 			currentState = message.state;
@@ -161,10 +179,115 @@ const send = (message: ClientMessage): void => {
 	}
 };
 
+// Show room error screen
+const showRoomError = (errorMessage: string): void => {
+	const app = document.getElementById("app");
+	if (!app) return;
+
+	app.innerHTML = `
+		<div id="error-screen" class="screen">
+			<h1>Room Not Found</h1>
+			<p>${escapeHtml(errorMessage)}</p>
+			<a href="/" class="host-btn">Go to Home</a>
+		</div>
+	`;
+};
+
+// Show landing page
+const showLandingPage = (): void => {
+	const app = document.getElementById("app");
+	if (!app) return;
+
+	app.innerHTML = `
+		<div id="landing-screen" class="screen">
+			<h1>Casino Wheel</h1>
+			<p>Create a room to start selecting the next retro host!</p>
+			<button id="create-room-btn" class="host-btn">Create New Room</button>
+		</div>
+	`;
+
+	const createBtn = document.getElementById("create-room-btn");
+	if (createBtn) {
+		createBtn.onclick = () => {
+			(createBtn as HTMLButtonElement).disabled = true;
+			connect();
+			// Wait for connection, then send createRoom
+			const checkConnection = (): void => {
+				if (ws && ws.readyState === WebSocket.OPEN) {
+					send({ type: "createRoom" });
+				} else if (ws && ws.readyState === WebSocket.CONNECTING) {
+					setTimeout(checkConnection, 50);
+				}
+			};
+			checkConnection();
+		};
+	}
+};
+
+// Show join screen (for entering name)
+const showJoinScreen = (): void => {
+	const app = document.getElementById("app");
+	if (!app) return;
+
+	// Build the share URL section only if we have a roomId
+	const shareSection = roomId
+		? `
+		<div class="share-section">
+			<p>Share this link with others:</p>
+			<div class="share-url">
+				<input type="text" id="share-url-input" value="${window.location.href}" readonly>
+				<button type="button" id="copy-url-btn" class="copy-btn">Copy</button>
+			</div>
+		</div>
+	`
+		: "";
+
+	app.innerHTML = `
+		<div id="join-screen" class="screen">
+			<h1>Casino Wheel</h1>
+			${shareSection}
+			<form id="join-form">
+				<input type="text" id="name-input" placeholder="Enter your name" required maxlength="20">
+				<button type="submit">Join Game</button>
+			</form>
+		</div>
+		<div id="game-screen" class="screen hidden">
+			<div id="game-header">
+				<h2>Players</h2>
+				<div id="phase-indicator"></div>
+				<div id="countdown"></div>
+			</div>
+			<div id="player-list"></div>
+			<div id="wheel-container"></div>
+			<div id="host-controls"></div>
+			<div id="result-overlay" class="hidden"></div>
+		</div>
+	`;
+
+	setupJoinForm();
+
+	// Setup copy button
+	const copyBtn = document.getElementById("copy-url-btn");
+	const shareInput = document.getElementById("share-url-input") as HTMLInputElement | null;
+	if (copyBtn && shareInput) {
+		copyBtn.onclick = () => {
+			shareInput.select();
+			navigator.clipboard.writeText(shareInput.value).then(() => {
+				copyBtn.textContent = "Copied!";
+				setTimeout(() => {
+					copyBtn.textContent = "Copy";
+				}, 2000);
+			});
+		};
+	}
+};
+
 // Join form handling
 const setupJoinForm = (): void => {
-	const form = document.getElementById("join-form") as HTMLFormElement;
-	const input = document.getElementById("name-input") as HTMLInputElement;
+	const form = document.getElementById("join-form") as HTMLFormElement | null;
+	const input = document.getElementById("name-input") as HTMLInputElement | null;
+
+	if (!form || !input) return;
 
 	form.addEventListener("submit", (e) => {
 		e.preventDefault();
@@ -204,7 +327,7 @@ const renderPlayerList = (): void => {
 		div.innerHTML = `
 			<span class="player-name">${escapeHtml(player.name)}</span>
 			${player.isHost ? '<span class="host-badge">Host</span>' : ""}
-			${player.bet !== null ? '<span class="bet-indicator">🎯</span>' : ""}
+			${player.bet !== null ? '<span class="bet-indicator">*</span>' : ""}
 		`;
 
 		// Click to bet
@@ -641,8 +764,19 @@ const render = (): void => {
 const init = (): void => {
 	initAudio();
 	enableAudio();
-	connect();
-	setupJoinForm();
+
+	const path = window.location.pathname;
+	const roomMatch = path.match(/^\/room\/([a-z0-9]+)$/i);
+
+	if (roomMatch) {
+		// We're in a room - connect and show join screen
+		roomId = roomMatch[1].toLowerCase();
+		connect(roomId);
+		showJoinScreen();
+	} else {
+		// Landing page - show create room button
+		showLandingPage();
+	}
 };
 
 document.addEventListener("DOMContentLoaded", init);

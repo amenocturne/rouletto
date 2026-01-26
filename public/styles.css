@@ -1,3 +1,16 @@
+:root {
+	--bg-dark: #0d0d1a;
+	--bg-medium: #1a1a2e;
+	--bg-light: #2a2a4e;
+	--accent-primary: #4a9;
+	--accent-gold: #ffd700;
+	--accent-orange: #f90;
+	--text-primary: #eee;
+	--text-muted: #888;
+	--font-display: "Orbitron", sans-serif;
+	--font-body: "Roboto", system-ui, sans-serif;
+}
+
 * {
 	box-sizing: border-box;
 	margin: 0;
@@ -5,10 +18,18 @@
 }
 
 body {
-	font-family: system-ui, sans-serif;
-	background: radial-gradient(ellipse at center, #1a1a2e 0%, #0d0d1a 100%);
-	color: #eee;
+	font-family: var(--font-body);
+	background: radial-gradient(ellipse at center, var(--bg-medium) 0%, var(--bg-dark) 100%);
+	color: var(--text-primary);
 	min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+.result-title,
+.winner-name {
+	font-family: var(--font-display);
 }
 
 /* Add subtle texture overlay */
@@ -44,6 +65,13 @@ body {
 	gap: 2rem;
 }
 
+#join-screen h1 {
+	font-size: 3rem;
+	color: var(--accent-gold);
+	text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+	letter-spacing: 0.1em;
+}
+
 #join-form {
 	display: flex;
 	gap: 1rem;
@@ -58,18 +86,67 @@ button {
 }
 
 input {
-	background: #2a2a4e;
-	color: #eee;
+	background: var(--bg-light);
+	color: var(--text-primary);
+	border: 2px solid transparent;
+	transition:
+		border-color 0.2s,
+		box-shadow 0.2s;
+}
+
+input:focus {
+	outline: none;
+	border-color: var(--accent-primary);
+	box-shadow: 0 0 10px rgba(74, 153, 153, 0.3);
 }
 
 button {
-	background: #4a9;
+	background: linear-gradient(135deg, var(--accent-primary) 0%, #3a8 100%);
+	font-family: var(--font-display);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
 	color: #fff;
 	cursor: pointer;
+	transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
 }
 
 button:hover {
-	background: #3a8;
+	background: linear-gradient(135deg, #3a8 0%, #2a7 100%);
+}
+
+button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+button:active:not(:disabled) {
+	transform: scale(0.98);
+}
+
+/* Button loading state */
+button.loading {
+	position: relative;
+	color: transparent;
+}
+
+button.loading::after {
+	content: "";
+	position: absolute;
+	width: 20px;
+	height: 20px;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	border: 2px solid transparent;
+	border-top-color: white;
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+	to {
+		transform: translate(-50%, -50%) rotate(360deg);
+	}
 }
 
 #player-list {
@@ -80,24 +157,32 @@ button:hover {
 }
 
 .player-card {
-	background: #2a2a4e;
+	background: var(--bg-light);
 	padding: 1rem;
 	border-radius: 8px;
 	display: flex;
 	gap: 0.5rem;
 	align-items: center;
+	border: 2px solid transparent;
+	transition:
+		transform 0.2s,
+		box-shadow 0.2s,
+		border-color 0.2s;
 }
 
 .player-card.is-me {
-	border: 2px solid #4a9;
+	border: 2px solid var(--accent-primary);
+	box-shadow: 0 0 15px rgba(74, 153, 153, 0.3);
 }
 
 .host-badge {
-	background: gold;
+	background: var(--accent-gold);
 	color: #000;
 	padding: 0.25rem 0.5rem;
 	border-radius: 4px;
 	font-size: 0.75rem;
+	font-family: var(--font-display);
+	text-transform: uppercase;
 }
 
 #phase-indicator {
@@ -105,7 +190,7 @@ button:hover {
 	text-align: center;
 	padding: 0.5rem;
 	border-radius: 4px;
-	background: #2a2a4e;
+	background: var(--bg-light);
 	margin: 1rem 0;
 }
 
@@ -123,7 +208,7 @@ button:hover {
 }
 
 .player-card.my-bet {
-	border: 2px solid gold;
+	border: 2px solid var(--accent-gold);
 	box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
 }
 
@@ -141,7 +226,7 @@ button:hover {
 .host-btn {
 	padding: 1rem 2rem;
 	font-size: 1.25rem;
-	background: linear-gradient(135deg, #4a9 0%, #3a8 100%);
+	background: linear-gradient(135deg, var(--accent-primary) 0%, #3a8 100%);
 	border: none;
 	border-radius: 8px;
 	color: white;
@@ -160,10 +245,11 @@ button:hover {
 /* Countdown */
 #countdown {
 	font-size: 1.5rem;
-	color: #f90;
+	color: var(--accent-orange);
 	font-weight: bold;
 	text-align: center;
 	margin: 1rem 0;
+	font-family: var(--font-display);
 }
 
 /* Wheel container */
@@ -205,9 +291,9 @@ button:hover {
 .result-content {
 	text-align: center;
 	padding: 3rem;
-	background: linear-gradient(135deg, #2a2a4e 0%, #1a1a2e 100%);
+	background: linear-gradient(135deg, var(--bg-light) 0%, var(--bg-medium) 100%);
 	border-radius: 16px;
-	border: 2px solid #4a9;
+	border: 2px solid var(--accent-primary);
 	box-shadow: 0 0 40px rgba(74, 153, 153, 0.4);
 	max-width: 500px;
 	width: 90%;
@@ -216,13 +302,13 @@ button:hover {
 .result-title {
 	font-size: 2rem;
 	margin-bottom: 1rem;
-	color: #ffd700;
+	color: var(--accent-gold);
 }
 
 .winner-name {
 	font-size: 3rem;
 	font-weight: bold;
-	color: #4a9;
+	color: var(--accent-primary);
 	margin: 1.5rem 0;
 	text-shadow: 0 0 20px rgba(74, 153, 153, 0.8);
 	animation: pulse 2s infinite;
@@ -246,7 +332,7 @@ button:hover {
 }
 
 .correct-guessers h3 {
-	color: #ffd700;
+	color: var(--accent-gold);
 	margin-bottom: 0.5rem;
 }
 
@@ -257,11 +343,11 @@ button:hover {
 
 .correct-guessers li {
 	padding: 0.25rem 0;
-	color: #4a9;
+	color: var(--accent-primary);
 }
 
 .no-guessers {
-	color: #888;
+	color: var(--text-muted);
 	font-style: italic;
 	margin: 2rem 0;
 }
@@ -269,7 +355,7 @@ button:hover {
 .play-again-btn {
 	padding: 1rem 2rem;
 	font-size: 1.25rem;
-	background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+	background: linear-gradient(135deg, var(--accent-gold) 0%, #ffaa00 100%);
 	border: none;
 	border-radius: 8px;
 	color: #000;
@@ -287,7 +373,47 @@ button:hover {
 }
 
 .waiting-text {
-	color: #888;
+	color: var(--text-muted);
 	font-style: italic;
 	margin-top: 1rem;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 600px) {
+	#join-screen h1 {
+		font-size: 2rem;
+	}
+
+	#join-form {
+		flex-direction: column;
+		width: 100%;
+		padding: 0 1rem;
+	}
+
+	#join-form input,
+	#join-form button {
+		width: 100%;
+	}
+
+	.winner-name {
+		font-size: 2rem;
+	}
+
+	#player-list {
+		justify-content: center;
+	}
+
+	.player-card {
+		width: 100%;
+		justify-content: center;
+	}
+
+	#wheel-container canvas {
+		max-width: 300px;
+		max-height: 300px;
+	}
+
+	.result-content {
+		padding: 1.5rem;
+	}
 }

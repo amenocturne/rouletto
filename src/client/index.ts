@@ -12,6 +12,10 @@ let countdownInterval: number | null = null;
 // Room state
 let roomId: string | null = null;
 
+// UI state
+let shouldFocusCandidateInput = false;
+let hasInitiallyFocusedCandidateInput = false;
+
 // Pixi.js wheel state
 let pixiApp: PIXI.Application | null = null;
 let wheelContainer: PIXI.Container | null = null;
@@ -400,9 +404,10 @@ const renderAdminControls = (): void => {
 
 	const addCandidate = (): void => {
 		if (input?.value.trim()) {
+			// Set flag to refocus after re-render
+			shouldFocusCandidateInput = true;
 			send({ type: "addCandidates", names: input.value.trim() });
 			input.value = "";
-			input.focus();
 		}
 	};
 
@@ -414,6 +419,13 @@ const renderAdminControls = (): void => {
 				addCandidate();
 			}
 		};
+
+		// Auto-focus on first render as admin, or after adding a candidate
+		if (!hasInitiallyFocusedCandidateInput || shouldFocusCandidateInput) {
+			hasInitiallyFocusedCandidateInput = true;
+			shouldFocusCandidateInput = false;
+			input.focus();
+		}
 	}
 };
 

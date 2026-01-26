@@ -898,6 +898,18 @@ button.loading::after {
 		0 3px 6px rgba(0, 0, 0, 0.3),
 		0 6px 12px rgba(0, 0, 0, 0.15),
 		inset 0 1px 0 rgba(255, 255, 255, 0.3);
+	transition: all 0.2s ease;
+	cursor: default;
+}
+
+.panel-header:hover {
+	background: linear-gradient(180deg, var(--gold) 0%, var(--brass-light) 100%);
+	box-shadow:
+		0 4px 8px rgba(0, 0, 0, 0.35),
+		0 8px 16px rgba(0, 0, 0, 0.2),
+		inset 0 1px 0 rgba(255, 255, 255, 0.4),
+		0 0 15px rgba(255, 215, 0, 0.3);
+	transform: translateY(-1px);
 }
 
 .panel-header h3 {
@@ -930,29 +942,89 @@ button.loading::after {
 }
 
 .add-candidate-row {
+	position: relative;
 	display: flex;
-	gap: 0.5rem;
+	flex-direction: column;
+	gap: 0.75rem;
+	background: linear-gradient(165deg, var(--felt-medium) 0%, var(--felt-dark) 50%, #082818 100%);
+	border: 3px solid var(--brass);
+	border-radius: 10px;
+	padding: 1.25rem;
+	z-index: 1;
+	box-shadow:
+		inset 0 1px 0 rgba(255, 215, 0, 0.15),
+		inset 0 -2px 8px rgba(0, 0, 0, 0.3),
+		0 4px 12px rgba(0, 0, 0, 0.4);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Hover effect for add candidate panel */
+.add-candidate-row:hover {
+	transform: translateY(-2px);
+	box-shadow:
+		inset 0 1px 0 rgba(255, 215, 0, 0.2),
+		inset 0 -2px 8px rgba(0, 0, 0, 0.3),
+		0 8px 20px rgba(0, 0, 0, 0.5),
+		0 0 15px rgba(255, 215, 0, 0.1);
+}
+
+/* Stacked layers for add candidate row */
+.add-candidate-row::before,
+.add-candidate-row::after {
+	content: "";
+	position: absolute;
+	background: linear-gradient(165deg, var(--felt-light) 0%, var(--felt-medium) 100%);
+	border: 3px solid var(--brass);
+	border-radius: 10px;
+	z-index: -1;
+	transition: box-shadow 0.2s ease;
+}
+
+.add-candidate-row::before {
+	inset: 5px -5px -5px 5px;
+	background: linear-gradient(165deg, #1a5035 0%, #0f3520 100%);
+	box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+}
+
+.add-candidate-row::after {
+	inset: 10px -10px -10px 10px;
+	background: linear-gradient(165deg, #134028 0%, #0a2a18 100%);
+	border-color: #9a7209;
+	box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.add-candidate-row:hover::before {
+	box-shadow: 0 5px 12px rgba(0, 0, 0, 0.4);
+}
+
+.add-candidate-row:hover::after {
+	box-shadow: 0 6px 14px rgba(0, 0, 0, 0.45);
 }
 
 .add-candidate-row input {
-	flex: 1;
-	padding: 0.6rem 0.8rem;
-	font-size: 0.9rem;
-	background: rgba(0, 30, 15, 0.7);
+	width: 100%;
+	padding: 0.75rem 1rem;
+	font-size: 1rem;
+	background: rgba(0, 30, 15, 0.6);
 	border: 2px solid var(--brass);
-	border-radius: 4px;
+	border-radius: 6px;
+	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .add-candidate-row input:focus {
 	border-color: var(--gold);
-	box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+	box-shadow:
+		inset 0 2px 4px rgba(0, 0, 0, 0.3),
+		0 0 10px rgba(255, 215, 0, 0.3);
 }
 
 .add-candidate-row button {
-	padding: 0.6rem 1rem;
-	font-size: 1.2rem;
-	font-family: var(--font-body);
-	min-width: 44px;
+	width: 100%;
+	padding: 0.75rem 1rem;
+	font-size: 1.1rem;
+	font-family: var(--font-display);
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
 }
 
 /* Candidates list */
@@ -1088,15 +1160,16 @@ button.loading::after {
 	border-radius: 4px;
 	color: var(--ivory);
 	cursor: pointer;
-	margin-left: auto;
 	box-shadow:
 		inset 0 1px 0 rgba(255, 255, 255, 0.1),
 		0 2px 4px rgba(0, 0, 0, 0.2);
 	transition: all 0.2s ease;
-	/* Prevent card hover from affecting button - lift in 3D space */
-	position: relative;
-	z-index: 1;
-	transform: translateZ(1px);
+	/* Position on the right side of the card */
+	position: absolute;
+	right: 0.75rem;
+	top: 50%;
+	transform: translateY(-50%) translateZ(1px);
+	z-index: 2;
 }
 
 .remove-candidate-btn:hover {
@@ -1108,7 +1181,7 @@ button.loading::after {
 }
 
 .remove-candidate-btn:active {
-	transform: translateY(1px) translateZ(1px);
+	transform: translateY(-50%) translateZ(1px) scale(0.95);
 	box-shadow:
 		inset 0 1px 0 rgba(255, 255, 255, 0.1),
 		0 1px 2px rgba(0, 0, 0, 0.2);
@@ -1200,6 +1273,9 @@ button.loading::after {
 	margin-top: 1.5rem;
 	display: flex;
 	justify-content: center;
+	/* Reserve space for the lever to prevent wheel jumping */
+	min-height: 200px;
+	align-items: flex-start;
 }
 
 #phase-indicator {

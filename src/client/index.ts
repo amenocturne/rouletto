@@ -801,7 +801,14 @@ const drawWheel = (candidates: readonly Candidate[]): void => {
 		text.anchor.set(0.5);
 		text.x = Math.cos(midAngle) * textRadius;
 		text.y = Math.sin(midAngle) * textRadius;
-		text.rotation = midAngle + Math.PI / 2; // Align text along radius
+		// Rotate text to be readable (flip if on bottom half of wheel)
+		let textRotation = midAngle + Math.PI / 2;
+		// Normalize angle to check if text would be upside down
+		const normalizedAngle = ((midAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+		if (normalizedAngle > Math.PI / 2 && normalizedAngle < (3 * Math.PI) / 2) {
+			textRotation += Math.PI; // Flip text to be readable
+		}
+		text.rotation = textRotation;
 		wheelContainer.addChild(text);
 	}
 

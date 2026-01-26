@@ -82,6 +82,9 @@ body {
 	text-shadow: 0 0 2px rgba(100, 255, 100, 0.1);
 	perspective: 1000px;
 	overflow: hidden;
+	/* Content safe area - keeps UI away from card borders */
+	padding: 100px;
+	box-sizing: border-box;
 }
 
 /* App container */
@@ -161,6 +164,45 @@ h3,
 		0 2px 4px rgba(0, 0, 0, 0.5),
 		0 0 20px rgba(255, 215, 0, 0.3);
 	letter-spacing: 0.1em;
+}
+
+/* Loading overlay - matches body background, hides content until ready */
+#loading-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 10000;
+	pointer-events: none;
+	/* Match the body background exactly */
+	background: #061209;
+}
+
+/* Felt texture - same as body::before */
+#loading-overlay::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background:
+		radial-gradient(ellipse at center, #14482c 0%, #0a3018 70%, #071a0f 100%),
+		url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='8' numOctaves='1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+	background-blend-mode: soft-light;
+	opacity: 0.7;
+}
+
+/* Vignette - same as body::after */
+#loading-overlay::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.4) 80%, rgba(0, 0, 0, 0.7) 100%);
+}
+
+#loading-overlay.fade-out {
+	opacity: 0;
+	transition: opacity 0.3s ease-out;
+}
+
+#loading-overlay.removed {
+	display: none;
 }
 
 .hidden {
@@ -398,10 +440,9 @@ h3,
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	min-height: 100vh;
+	height: calc(100vh - 200px);
 	gap: 2rem;
 	text-align: center;
-	padding: 6rem 8rem;
 	box-sizing: border-box;
 }
 
@@ -851,13 +892,13 @@ button.loading::after {
 	white-space: nowrap;
 }
 
-/* Game screen - full viewport centered with space for card border */
+/* Game screen - centered within frame */
 #game-screen.screen {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	min-height: 100vh;
-	padding: 10rem 12rem 4rem 0;
+	height: calc(100vh - 200px);
+	padding: 0;
 	box-sizing: border-box;
 }
 
@@ -867,8 +908,7 @@ button.loading::after {
 	grid-template-columns: auto 320px;
 	gap: 3rem;
 	align-items: start;
-	max-width: 1400px;
-	width: 100%;
+	width: auto;
 }
 
 .game-left {
@@ -1360,14 +1400,21 @@ button.loading::after {
 	letter-spacing: 0.05em;
 }
 
-/* Action controls */
+/* Wheel row - lever on left, wheel on right */
+.wheel-row {
+	display: flex;
+	align-items: center;
+	gap: 2rem;
+}
+
+/* Action controls - fixed size to prevent layout jumps */
 #action-controls {
-	margin-top: 1.5rem;
 	display: flex;
 	justify-content: center;
-	/* Reserve space for the lever to prevent wheel jumping */
-	min-height: 240px;
-	align-items: flex-start;
+	align-items: center;
+	/* Fixed size to accommodate both button and lever */
+	width: 180px;
+	height: 220px;
 }
 
 /* Betting indicator */
@@ -1409,7 +1456,7 @@ button.loading::after {
 }
 
 /* Countdown */
-/* Wheel title */
+/* Wheel title - offset to center over wheel (accounting for lever on left) */
 .wheel-title {
 	font-family: var(--font-display);
 	font-size: 2.5rem;
@@ -1423,6 +1470,8 @@ button.loading::after {
 	animation: titlePulse 2s ease-in-out infinite;
 	text-align: center;
 	margin-bottom: 1rem;
+	/* Offset to center over wheel, not lever+wheel */
+	margin-left: 100px;
 }
 
 @keyframes titlePulse {
@@ -1913,6 +1962,12 @@ button.loading::after {
 	user-select: none;
 }
 
+.lever-container.disabled {
+	cursor: default;
+	opacity: 0.7;
+	pointer-events: none;
+}
+
 .lever-slot {
 	position: relative;
 	width: 36px;
@@ -1992,9 +2047,14 @@ button.loading::after {
 }
 
 .lever-handle.pulled {
-	/* Ball moves down */
+	/* Ball moves/stays down */
 	transform: translateX(-50%) translateY(100px);
 	transition: transform 0.12s ease-in;
+}
+
+/* When disabled (spinning/result phase), no transition needed - just stay down */
+.lever-container.disabled .lever-handle.pulled {
+	transition: none;
 }
 
 .lever-handle.released {
@@ -2087,6 +2147,11 @@ button.loading::after {
 	/* scaleY(0.15) shrinks from bottom toward top */
 	transform: translateY(-100px) scaleY(0.15);
 	transition: transform 0.12s ease-in;
+}
+
+/* When disabled, no transition - just stay in pulled state */
+.lever-container.disabled .lever-handle.pulled .lever-stick {
+	transition: none;
 }
 
 /* Rod springs back with handle */

@@ -5,8 +5,13 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Casino Wheel</title>
 	<link rel="stylesheet" href="/styles.css">
+	<!-- Preload fonts to prevent FOIT -->
+	<link rel="preload" href="/fonts/press-start-2p.ttf" as="font" type="font/truetype" crossorigin>
+	<link rel="preload" href="/fonts/roboto-400.ttf" as="font" type="font/truetype" crossorigin>
 </head>
 <body>
+	<!-- Loading overlay - green felt background until app is ready -->
+	<div id="loading-overlay"></div>
 	<div id="app">
 		<!-- Content is rendered dynamically by JavaScript -->
 	</div>

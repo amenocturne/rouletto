@@ -222,19 +222,47 @@ const send = (message: ClientMessage): void => {
 
 // Show room error screen
 const showRoomError = (_errorMessage: string): void => {
+	resetPixiState();
+
 	const app = document.getElementById("app");
 	if (!app) return;
 
 	app.innerHTML = `
 		<div id="error-screen" class="screen">
 			<h1>Room Not Found</h1>
-			<a href="/" class="host-btn">Go to Home</a>
+			<button id="go-home-btn" class="host-btn">Go to Home</button>
 		</div>
 	`;
+
+	const goHomeBtn = document.getElementById("go-home-btn");
+	if (goHomeBtn) {
+		goHomeBtn.onclick = () => {
+			window.history.pushState({}, "", "/");
+			showLandingPage();
+		};
+	}
+};
+
+// Reset Pixi state when navigating away from game
+const resetPixiState = (): void => {
+	if (pixiApp) {
+		pixiApp.destroy(true);
+		pixiApp = null;
+	}
+	wheelContainer = null;
+	wheelGlowFilter = null;
+	glowTickerCallback = null;
+	isPixiInitializing = false;
+	lastCandidatesJson = "";
+	currentState = null;
+	mySpectatorId = null;
+	isAdmin = false;
 };
 
 // Show landing page
 const showLandingPage = (): void => {
+	resetPixiState();
+
 	const app = document.getElementById("app");
 	if (!app) return;
 
@@ -336,6 +364,18 @@ const showJoinScreen = (): void => {
 				}, 2000);
 			});
 		};
+	}
+
+	// Pre-initialize Pixi so wheel is ready when user joins
+	if (!pixiApp && !isPixiInitializing) {
+		isPixiInitializing = true;
+		initPixi().then(() => {
+			isPixiInitializing = false;
+			// If user already joined while we were initializing, re-render
+			if (currentState) {
+				render();
+			}
+		});
 	}
 };
 
@@ -1002,29 +1042,38 @@ const render = (): void => {
 	if (!joinScreen || !gameScreen) return;
 
 	const hasJoined = currentState.spectators.some((s) => s.id === mySpectatorId);
-	joinScreen.classList.toggle("hidden", hasJoined);
-	gameScreen.classList.toggle("hidden", !hasJoined);
 
-	if (!hasJoined) return;
-
-	// Initialize Pixi if needed
-	if (!pixiApp && !isPixiInitializing) {
-		isPixiInitializing = true;
-		initPixi().then(() => {
-			isPixiInitializing = false;
-			if (currentState) {
-				lastCandidatesJson = JSON.stringify(currentState.candidates);
-				drawWheel(currentState.candidates);
-			}
-		});
-	} else if (pixiApp) {
-		// Only redraw wheel if candidates changed
-		const candidatesJson = JSON.stringify(currentState.candidates);
-		if (candidatesJson !== lastCandidatesJson) {
-			lastCandidatesJson = candidatesJson;
-			drawWheel(currentState.candidates);
-		}
+	if (!hasJoined) {
+		joinScreen.classList.remove("hidden");
+		gameScreen.classList.add("hidden");
+		return;
 	}
+
+	// Wait for Pixi to be ready before showing game screen
+	if (!pixiApp) {
+		if (!isPixiInitializing) {
+			// Start Pixi initialization
+			isPixiInitializing = true;
+			initPixi().then(() => {
+				isPixiInitializing = false;
+				// Re-render once Pixi is ready
+				render();
+			});
+		}
+		// Don't show game screen yet - wait for Pixi
+		return;
+	}
+
+	// Pixi is ready - draw wheel if candidates changed
+	const candidatesJson = JSON.stringify(currentState.candidates);
+	if (candidatesJson !== lastCandidatesJson) {
+		lastCandidatesJson = candidatesJson;
+		drawWheel(currentState.candidates);
+	}
+
+	// Show game screen
+	joinScreen.classList.add("hidden");
+	gameScreen.classList.remove("hidden");
 
 	// Show/hide admin badge
 	const adminBadge = document.getElementById("admin-badge");
@@ -1207,10 +1256,30 @@ const createCardBorder = async (): Promise<void> => {
 	}
 };
 
+// Hide loading overlay with fade animation
+const hideLoadingOverlay = (): void => {
+	const overlay = document.getElementById("loading-overlay");
+	if (!overlay) return;
+
+	// Small delay to ensure DOM is painted
+	requestAnimationFrame(() => {
+		requestAnimationFrame(() => {
+			overlay.classList.add("fade-out");
+			// Remove from DOM after transition completes
+			setTimeout(() => {
+				overlay.classList.add("removed");
+			}, 400);
+		});
+	});
+};
+
 // Initialize on load
-const init = (): void => {
-	// Create decorative card border
-	createCardBorder();
+const init = async (): Promise<void> => {
+	// Wait for fonts to be ready (prevents flash of unstyled text)
+	await document.fonts.ready;
+
+	// Create decorative card border (await to prevent flash)
+	await createCardBorder();
 
 	loadVolumeSettings();
 	initAudio();
@@ -1230,6 +1299,9 @@ const init = (): void => {
 		// Landing page - show create room button
 		showLandingPage();
 	}
+
+	// Hide loading overlay after app is rendered
+	hideLoadingOverlay();
 };
 
 document.addEventListener("DOMContentLoaded", init);

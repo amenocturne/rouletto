@@ -1001,11 +1001,12 @@ const renderResultOverlay = (): void => {
 	`;
 
 	// Add event listener for play again button
-	const playAgainBtn = document.getElementById("play-again-btn");
+	const playAgainBtn = document.getElementById("play-again-btn") as HTMLButtonElement | null;
 	if (playAgainBtn) {
 		playAgainBtn.onclick = () => {
 			send({ type: "reset" });
 		};
+		playAgainBtn.focus();
 	}
 };
 

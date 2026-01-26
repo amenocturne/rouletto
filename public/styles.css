@@ -401,6 +401,8 @@ h3,
 	min-height: 100vh;
 	gap: 2rem;
 	text-align: center;
+	padding: 6rem 8rem;
+	box-sizing: border-box;
 }
 
 #join-screen h1,
@@ -849,13 +851,14 @@ button.loading::after {
 	white-space: nowrap;
 }
 
-/* Game screen - full viewport centered */
+/* Game screen - full viewport centered with space for card border */
 #game-screen.screen {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	min-height: 100vh;
-	padding: 1rem;
+	padding: 10rem 12rem 4rem 0;
+	box-sizing: border-box;
 }
 
 /* Game layout - two column */

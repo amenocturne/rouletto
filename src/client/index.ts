@@ -1,6 +1,13 @@
 import * as PIXI from "pixi.js";
 import { CRTFilter, GlowFilter } from "pixi-filters";
 import type { Candidate, ClientMessage, GameState, ServerMessage } from "../shared/types";
+import {
+	loadCardsTexture,
+	createCardSprite,
+	Suit,
+	Rank,
+	getCardDimensions,
+} from "./cards";
 
 // State management
 let currentState: GameState | null = null;
@@ -1084,8 +1091,96 @@ const createCRTOverlay = (): void => {
 	document.body.appendChild(crt);
 };
 
+// Create scattered card border around the screen
+const createCardBorder = async (): Promise<void> => {
+	const pixiTestApp = new PIXI.Application();
+	await pixiTestApp.init({
+		width: window.innerWidth,
+		height: window.innerHeight,
+		backgroundAlpha: 0,
+	});
+	pixiTestApp.canvas.style.position = "fixed";
+	pixiTestApp.canvas.style.top = "0";
+	pixiTestApp.canvas.style.left = "0";
+	pixiTestApp.canvas.style.pointerEvents = "none";
+	pixiTestApp.canvas.style.zIndex = "-1";
+	document.body.appendChild(pixiTestApp.canvas);
+
+	await loadCardsTexture();
+	const cardDims = getCardDimensions();
+	const scale = 1;
+	const w = window.innerWidth;
+	const h = window.innerHeight;
+
+	// All suits and ranks for variety
+	const suits = [Suit.HEARTS, Suit.SPADES, Suit.DIAMONDS, Suit.CLUBS];
+	const ranks = [
+		Rank.TWO, Rank.THREE, Rank.FOUR, Rank.FIVE, Rank.SIX,
+		Rank.SEVEN, Rank.EIGHT, Rank.NINE, Rank.TEN,
+		Rank.JACK, Rank.QUEEN, Rank.KING, Rank.ACE,
+	];
+
+	const getRandomCard = () => {
+		const suit = suits[Math.floor(Math.random() * suits.length)];
+		const rank = ranks[Math.floor(Math.random() * ranks.length)];
+		return createCardSprite(suit, rank);
+	};
+
+	// Generate cards along edges - keep them tight to edges
+	const cardWidth = cardDims.width * scale;
+	const cardHeight = cardDims.height * scale;
+	const overlap = 0.5;
+
+	// Top edge - cards peek from top
+	for (let x = -cardWidth / 2; x < w + cardWidth / 2; x += cardWidth * overlap) {
+		const card = getRandomCard();
+		card.anchor.set(0.5);
+		card.scale.set(scale);
+		card.x = x + (Math.random() - 0.5) * 30;
+		card.y = cardHeight * 0.2 + (Math.random() - 0.5) * 20;
+		card.rotation = (Math.random() - 0.5) * 0.6;
+		pixiTestApp.stage.addChild(card);
+	}
+
+	// Bottom edge - cards peek from bottom
+	for (let x = -cardWidth / 2; x < w + cardWidth / 2; x += cardWidth * overlap) {
+		const card = getRandomCard();
+		card.anchor.set(0.5);
+		card.scale.set(scale);
+		card.x = x + (Math.random() - 0.5) * 30;
+		card.y = h - cardHeight * 0.2 + (Math.random() - 0.5) * 20;
+		card.rotation = (Math.random() - 0.5) * 0.6;
+		pixiTestApp.stage.addChild(card);
+	}
+
+	// Left edge - cards peek from left
+	for (let y = cardHeight / 2; y < h - cardHeight / 2; y += cardHeight * overlap) {
+		const card = getRandomCard();
+		card.anchor.set(0.5);
+		card.scale.set(scale);
+		card.x = cardWidth * 0.2 + (Math.random() - 0.5) * 20;
+		card.y = y + (Math.random() - 0.5) * 30;
+		card.rotation = (Math.random() - 0.5) * 0.6;
+		pixiTestApp.stage.addChild(card);
+	}
+
+	// Right edge - cards peek from right
+	for (let y = cardHeight / 2; y < h - cardHeight / 2; y += cardHeight * overlap) {
+		const card = getRandomCard();
+		card.anchor.set(0.5);
+		card.scale.set(scale);
+		card.x = w - cardWidth * 0.2 + (Math.random() - 0.5) * 20;
+		card.y = y + (Math.random() - 0.5) * 30;
+		card.rotation = (Math.random() - 0.5) * 0.6;
+		pixiTestApp.stage.addChild(card);
+	}
+};
+
 // Initialize on load
 const init = (): void => {
+	// Create decorative card border
+	createCardBorder();
+
 	loadVolumeSettings();
 	initAudio();
 	enableAudio();

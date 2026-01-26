@@ -438,6 +438,9 @@ const getContentType = (path: string): string => {
 	if (path.endsWith(".png")) return "image/png";
 	if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
 	if (path.endsWith(".svg")) return "image/svg+xml";
+	if (path.endsWith(".ttf")) return "font/ttf";
+	if (path.endsWith(".woff")) return "font/woff";
+	if (path.endsWith(".woff2")) return "font/woff2";
 	return "application/octet-stream";
 };
 
@@ -510,6 +513,12 @@ const server = Bun.serve<WebSocketData>({
 		if (pathname.startsWith("/sounds/")) {
 			const filePath = `public${pathname}`;
 			return serveFile(filePath, "public/sounds");
+		}
+
+		// Serve fonts from public/fonts/
+		if (pathname.startsWith("/fonts/")) {
+			const filePath = `public${pathname}`;
+			return serveFile(filePath, "public/fonts");
 		}
 
 		// Serve other public files

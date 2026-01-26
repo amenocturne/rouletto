@@ -582,34 +582,34 @@ const renderActionControls = (): void => {
 	const container = document.getElementById("action-controls");
 	if (!container || !currentState) return;
 
-	if (!isAdmin) {
-		container.innerHTML = "";
-		return;
-	}
-
-	// Show start betting button only in waiting phase
+	// Show start betting button in waiting phase
 	if (currentState.phase === "waiting" && currentState.candidates.length > 0) {
 		container.innerHTML = "";
 		const btn = document.createElement("button");
 		btn.className = "host-btn";
 		btn.textContent = "Start Betting";
-		btn.addEventListener("click", () => send({ type: "startBetting" }));
+		if (isAdmin) {
+			btn.addEventListener("click", () => send({ type: "startBetting" }));
+		} else {
+			btn.disabled = true;
+		}
 		container.appendChild(btn);
 		return;
 	}
 
-	// Show lever during betting, spinning, and result phases
+	// Show lever during betting, spinning, and result phases (all users)
 	if (
 		currentState.phase === "betting" ||
 		currentState.phase === "spinning" ||
 		currentState.phase === "result"
 	) {
-		const isInteractive = currentState.phase === "betting";
+		// Only admin can interact with lever during betting phase
+		const isInteractive = isAdmin && currentState.phase === "betting";
 		const isPulled = currentState.phase === "spinning" || currentState.phase === "result";
 
 		// Check if lever already exists - preserve it to avoid visual flash
-		let leverContainer = container.querySelector(".lever-container") as HTMLElement | null;
-		let handle = document.getElementById("lever-handle");
+		const leverContainer = container.querySelector(".lever-container") as HTMLElement | null;
+		const handle = document.getElementById("lever-handle");
 
 		if (leverContainer && handle) {
 			// Update existing lever classes
@@ -626,13 +626,26 @@ const renderActionControls = (): void => {
 			// Update label
 			const label = leverContainer.querySelector(".lever-label");
 			if (label) {
-				label.textContent = isInteractive ? "Pull to Spin" : "";
+				if (isInteractive) {
+					label.textContent = "Pull to Spin";
+				} else if (!isAdmin && currentState.phase === "betting") {
+					label.textContent = "Waiting...";
+				} else {
+					label.textContent = "";
+				}
 			}
 		} else {
 			// Create new lever
 			container.innerHTML = "";
 			const lever = document.createElement("div");
 			lever.className = `lever-container${isInteractive ? "" : " disabled"}`;
+			// Determine label text
+			let labelText = "";
+			if (isInteractive) {
+				labelText = "Pull to Spin";
+			} else if (!isAdmin && currentState.phase === "betting") {
+				labelText = "Waiting...";
+			}
 			lever.innerHTML = `
 				<div class="lever-slot">
 					<div class="lever-track"></div>
@@ -641,7 +654,7 @@ const renderActionControls = (): void => {
 						<div class="lever-stick"></div>
 					</div>
 				</div>
-				<div class="lever-label">${isInteractive ? "Pull to Spin" : ""}</div>
+				<div class="lever-label">${labelText}</div>
 			`;
 
 			if (isInteractive) {
@@ -664,7 +677,7 @@ const renderActionControls = (): void => {
 		return;
 	}
 
-	// Clear for other phases (waiting with no candidates)
+	// Clear for other phases (waiting with no candidates, or non-admin in waiting)
 	container.innerHTML = "";
 };
 

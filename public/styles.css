@@ -979,7 +979,7 @@ button.loading::after {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	margin-bottom: 0.75rem;
+	margin-bottom: 0.25rem;
 	padding: 0.5rem 1rem;
 	background: linear-gradient(180deg, var(--brass-light) 0%, var(--brass) 100%);
 	border: 2px solid var(--wood-dark);
@@ -1029,6 +1029,10 @@ button.loading::after {
 /* Admin controls - add candidate form on felt */
 #admin-controls {
 	margin-bottom: 0.75rem;
+}
+
+#admin-controls:empty {
+	display: none;
 }
 
 .add-candidate-row {
@@ -1124,7 +1128,7 @@ button.loading::after {
 	display: flex;
 	flex-direction: column;
 	gap: 0.6rem;
-	margin: 1rem 0;
+	margin-bottom: 1rem;
 	max-height: 400px;
 	overflow-y: auto;
 	padding-right: 0.5rem;

@@ -216,14 +216,13 @@ const send = (message: ClientMessage): void => {
 };
 
 // Show room error screen
-const showRoomError = (errorMessage: string): void => {
+const showRoomError = (_errorMessage: string): void => {
 	const app = document.getElementById("app");
 	if (!app) return;
 
 	app.innerHTML = `
 		<div id="error-screen" class="screen">
 			<h1>Room Not Found</h1>
-			<p>${escapeHtml(errorMessage)}</p>
 			<a href="/" class="host-btn">Go to Home</a>
 		</div>
 	`;
@@ -237,7 +236,6 @@ const showLandingPage = (): void => {
 	app.innerHTML = `
 		<div id="landing-screen" class="screen">
 			<h1>Casino Wheel</h1>
-			<p>Create a room to start selecting the next retro host!</p>
 			<button id="create-room-btn" class="host-btn">Create New Room</button>
 		</div>
 	`;

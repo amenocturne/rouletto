@@ -283,22 +283,33 @@ const showJoinScreen = (): void => {
 			${shareSection}
 			<form id="join-form">
 				<input type="text" id="name-input" placeholder="Enter your name" required maxlength="20">
+				<label class="join-option">
+					<input type="checkbox" id="join-as-player" checked>
+					<span>Join as player (add me to the wheel)</span>
+				</label>
 				<button type="submit">Join Game</button>
 			</form>
 		</div>
 		<div id="game-screen" class="screen hidden">
-			<div id="game-header">
-				<h2>Wheel Candidates</h2>
-				<div id="phase-indicator"></div>
-				<div id="countdown"></div>
-			</div>
-			<div id="admin-controls"></div>
-			<div id="candidates-list"></div>
-			<div id="wheel-container"></div>
-			<div id="action-controls"></div>
-			<div id="spectators-section">
-				<h3>Spectators</h3>
-				<div id="spectators-list"></div>
+			<div class="game-layout">
+				<div class="game-left">
+					<div id="wheel-container"></div>
+					<div id="action-controls"></div>
+					<div id="phase-indicator"></div>
+					<div id="countdown"></div>
+				</div>
+				<div class="game-right">
+					<div class="panel-header">
+						<h3>Candidates</h3>
+						<span id="admin-badge" class="admin-badge hidden">Admin</span>
+					</div>
+					<div id="admin-controls"></div>
+					<div id="candidates-list"></div>
+					<div id="spectators-section">
+						<h3>Watching</h3>
+						<div id="spectators-list"></div>
+					</div>
+				</div>
 			</div>
 			<div id="result-overlay" class="hidden"></div>
 		</div>
@@ -326,14 +337,16 @@ const showJoinScreen = (): void => {
 const setupJoinForm = (): void => {
 	const form = document.getElementById("join-form") as HTMLFormElement | null;
 	const input = document.getElementById("name-input") as HTMLInputElement | null;
+	const joinAsPlayerCheckbox = document.getElementById("join-as-player") as HTMLInputElement | null;
 
 	if (!form || !input) return;
 
 	form.addEventListener("submit", (e) => {
 		e.preventDefault();
 		const name = input.value.trim();
+		const joinAsPlayer = joinAsPlayerCheckbox?.checked ?? true;
 		if (name) {
-			send({ type: "join", name });
+			send({ type: "join", name, joinAsPlayer });
 		}
 	});
 };
@@ -363,7 +376,7 @@ const addTiltEffect = (element: HTMLElement): void => {
 	});
 };
 
-// Render admin controls (add candidates textarea)
+// Render admin controls (add candidates input)
 const renderAdminControls = (): void => {
 	const container = document.getElementById("admin-controls");
 	if (!container || !currentState) return;
@@ -375,22 +388,29 @@ const renderAdminControls = (): void => {
 	}
 
 	container.innerHTML = `
-		<div class="add-candidates-section">
-			<h3>Add Candidates</h3>
-			<textarea id="candidates-textarea" placeholder="Enter names (one per line)&#10;John&#10;Jane&#10;Bob"></textarea>
-			<button id="add-candidates-btn" class="host-btn">Add to Wheel</button>
+		<div class="add-candidate-row">
+			<input type="text" id="candidate-input" placeholder="Add name..." maxlength="20">
+			<button id="add-candidate-btn">+</button>
 		</div>
 	`;
 
-	const addBtn = document.getElementById("add-candidates-btn");
-	const textarea = document.getElementById("candidates-textarea") as HTMLTextAreaElement | null;
+	const addBtn = document.getElementById("add-candidate-btn");
+	const input = document.getElementById("candidate-input") as HTMLInputElement | null;
 
-	if (addBtn && textarea) {
-		addBtn.onclick = () => {
-			const names = textarea.value;
-			if (names.trim()) {
-				send({ type: "addCandidates", names });
-				textarea.value = "";
+	const addCandidate = (): void => {
+		if (input?.value.trim()) {
+			send({ type: "addCandidates", names: input.value.trim() });
+			input.value = "";
+			input.focus();
+		}
+	};
+
+	if (addBtn && input) {
+		addBtn.onclick = addCandidate;
+		input.onkeydown = (e) => {
+			if (e.key === "Enter") {
+				e.preventDefault();
+				addCandidate();
 			}
 		};
 	}
@@ -482,19 +502,27 @@ const renderCandidatesList = (): void => {
 	}
 };
 
-// Render spectators list (connected users)
+// Render spectators list (connected users who are not candidates)
 const renderSpectatorsList = (): void => {
 	const container = document.getElementById("spectators-list");
 	if (!container || !currentState) return;
 
 	container.innerHTML = "";
 
-	if (currentState.spectators.length === 0) {
+	// Get candidate names to filter out spectators who are also candidates
+	const candidateNames = new Set(currentState.candidates.map((c) => c.name.toLowerCase()));
+
+	// Filter spectators who are not candidates
+	const pureSpectators = currentState.spectators.filter(
+		(s) => !candidateNames.has(s.name.toLowerCase())
+	);
+
+	if (pureSpectators.length === 0) {
 		container.innerHTML = '<p class="no-spectators">No spectators yet.</p>';
 		return;
 	}
 
-	for (const spectator of currentState.spectators) {
+	for (const spectator of pureSpectators) {
 		const div = document.createElement("div");
 		div.className = "spectator-card";
 
@@ -717,18 +745,20 @@ const getSegmentColor = (index: number): number => {
 const drawPointer = (): void => {
 	if (!pixiApp) return;
 
+	const centerX = 300;
+
 	// Mounting bracket (brass)
 	const bracket = new PIXI.Graphics();
-	bracket.rect(190, 0, 20, 18);
+	bracket.rect(centerX - 14, 0, 28, 24);
 	bracket.fill({ color: 0xdaa520 }); // goldenrod (brass)
 	bracket.stroke({ color: 0xffd700, width: 2 });
 	pixiApp.stage.addChild(bracket);
 
 	// Main pointer body (leather flapper triangle)
 	const pointer = new PIXI.Graphics();
-	pointer.moveTo(200, 15);
-	pointer.lineTo(185, 45);
-	pointer.lineTo(215, 45);
+	pointer.moveTo(centerX, 20);
+	pointer.lineTo(centerX - 20, 60);
+	pointer.lineTo(centerX + 20, 60);
 	pointer.closePath();
 	pointer.fill({ color: 0x8b0000 }); // dark red (leather)
 	pointer.stroke({ color: 0xffd700, width: 2 }); // gold outline
@@ -744,7 +774,7 @@ const drawWheel = (candidates: readonly Candidate[]): void => {
 
 	if (candidates.length === 0) return;
 
-	const radius = 180;
+	const radius = 270;
 	const segmentAngle = (2 * Math.PI) / candidates.length;
 
 	// Draw outer wooden rim (dark brown with texture effect)
@@ -804,8 +834,10 @@ const drawWheel = (candidates: readonly Candidate[]): void => {
 		// Rotate text to be readable (flip if on bottom half of wheel)
 		let textRotation = midAngle + Math.PI / 2;
 		// Normalize angle to check if text would be upside down
-		const normalizedAngle = ((midAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-		if (normalizedAngle > Math.PI / 2 && normalizedAngle < (3 * Math.PI) / 2) {
+		// Text is upside down when midAngle points to bottom half (between π/2 and 3π/2)
+		const normalizedAngle =
+			((midAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+		if (normalizedAngle >= Math.PI / 2 && normalizedAngle <= (3 * Math.PI) / 2) {
 			textRotation += Math.PI; // Flip text to be readable
 		}
 		text.rotation = textRotation;
@@ -842,38 +874,33 @@ const initPixi = async (): Promise<void> => {
 
 	pixiApp = new PIXI.Application();
 	await pixiApp.init({
-		width: 400,
-		height: 400,
+		width: 600,
+		height: 600,
 		backgroundAlpha: 0,
 		antialias: true,
 	});
 
 	container.appendChild(pixiApp.canvas);
 
-	// Add CRT filter to entire stage for retro effect
-	const crtFilter = new CRTFilter({
-		curvature: 1,
-		lineWidth: 1,
-		lineContrast: 0.2,
-		verticalLine: false,
-		noise: 0.1,
-		noiseSize: 1,
-		vignetting: 0.3,
-		vignettingAlpha: 0.7,
-		vignettingBlur: 0.5,
-		time: 0,
-	});
-	pixiApp.stage.filters = [crtFilter];
-
-	// Animate CRT filter time for subtle scanline movement
-	pixiApp.ticker.add(() => {
-		crtFilter.time += 0.5;
-	});
+	// CRT filter disabled - using CSS scanlines for whole page instead
+	// const crtFilter = new CRTFilter({
+	// 	curvature: 1.5,
+	// 	lineWidth: 0.5,
+	// 	lineContrast: 0.15,
+	// 	verticalLine: false,
+	// 	noise: 0.08,
+	// 	noiseSize: 1.2,
+	// 	vignetting: 0.25,
+	// 	vignettingAlpha: 0.6,
+	// 	vignettingBlur: 0.4,
+	// 	time: 0,
+	// });
+	// pixiApp.stage.filters = [crtFilter];
 
 	// Create wheel container centered
 	wheelContainer = new PIXI.Container();
-	wheelContainer.x = 200;
-	wheelContainer.y = 200;
+	wheelContainer.x = 300;
+	wheelContainer.y = 300;
 	pixiApp.stage.addChild(wheelContainer);
 
 	// Add glow filter to wheel container
@@ -894,6 +921,9 @@ const initPixi = async (): Promise<void> => {
 const getPhaseText = (phase: Phase): string => {
 	switch (phase) {
 		case "waiting":
+			if (currentState && currentState.candidates.length > 0) {
+				return isAdmin ? "Ready to start" : "Waiting for admin...";
+			}
 			return "Waiting for candidates...";
 		case "betting":
 			return "Place your bets!";
@@ -1002,6 +1032,12 @@ const render = (): void => {
 		phaseIndicator.textContent = getPhaseText(currentState.phase);
 	}
 
+	// Show/hide admin badge
+	const adminBadge = document.getElementById("admin-badge");
+	if (adminBadge) {
+		adminBadge.classList.toggle("hidden", !isAdmin);
+	}
+
 	// If phase is waiting, reset glow to normal
 	if (currentState.phase === "waiting" && wheelGlowFilter && pixiApp) {
 		if (glowTickerCallback) {
@@ -1086,12 +1122,20 @@ const renderSettingsPanel = (): void => {
 	}
 };
 
+// Create CRT overlay element
+const createCRTOverlay = (): void => {
+	const crt = document.createElement("div");
+	crt.className = "crt-overlay";
+	document.body.appendChild(crt);
+};
+
 // Initialize on load
 const init = (): void => {
 	loadVolumeSettings();
 	initAudio();
 	enableAudio();
 	renderSettingsPanel();
+	createCRTOverlay();
 
 	const path = window.location.pathname;
 	const roomMatch = path.match(/^\/room\/([a-z0-9]+)$/i);

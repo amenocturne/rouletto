@@ -50,10 +50,19 @@
 
 body {
 	font-family: var(--font-body);
-	background: var(--felt-dark);
+	background: #020805;
 	color: var(--ivory);
 	min-height: 100vh;
 	position: relative;
+	text-shadow: 0 0 2px rgba(100, 255, 100, 0.1);
+	perspective: 1000px;
+	overflow-x: hidden;
+}
+
+/* App container */
+#app {
+	position: relative;
+	z-index: 1;
 }
 
 /* Felt texture overlay */
@@ -62,22 +71,70 @@ body::before {
 	position: fixed;
 	inset: 0;
 	background:
-		radial-gradient(ellipse at center, var(--felt-medium) 0%, var(--felt-dark) 70%),
-		url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='4' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+		radial-gradient(ellipse at center, #0e301c 0%, #06120a 85%),
+		url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='8' numOctaves='1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
 	background-blend-mode: soft-light;
-	opacity: 0.92;
+	opacity: 0.5;
 	pointer-events: none;
 	z-index: -2;
 }
 
-/* Vignette for table edge */
+/* Vignette for table edge - subtle */
 body::after {
 	content: "";
 	position: fixed;
 	inset: 0;
-	background: radial-gradient(ellipse at center, transparent 30%, rgba(0, 0, 0, 0.7) 100%);
+	background: radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.15) 100%);
 	pointer-events: none;
-	z-index: -1;
+	z-index: 9998;
+}
+
+/* CRT Scanlines overlay - matching Pixi CRT filter style */
+.crt-overlay {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 9999;
+	background: repeating-linear-gradient(
+		180deg,
+		transparent 0px,
+		transparent 2px,
+		rgba(0, 0, 0, 0.15) 2px,
+		rgba(0, 0, 0, 0.15) 4px
+	);
+	background-size: 100% 4px;
+	animation: scanlinesDrift 30s linear infinite;
+}
+
+@keyframes scanlinesDrift {
+	0% { background-position: 0 0; }
+	100% { background-position: 0 120px; }
+}
+
+/* CRT flicker effect */
+.crt-overlay::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 50, 0, 0.02);
+	animation: flicker 0.15s infinite;
+}
+
+@keyframes flicker {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.97; }
+}
+
+/* CRT vignette and curved edges */
+.crt-overlay::after {
+	content: "";
+	position: absolute;
+	inset: -5px;
+	box-shadow:
+		inset 0 0 100px rgba(0, 0, 0, 0.3),
+		inset 0 0 200px rgba(0, 0, 0, 0.2),
+		inset 0 0 15px rgba(0, 200, 100, 0.05);
+	border-radius: 40px;
 }
 
 h1,
@@ -91,12 +148,6 @@ h3,
 		0 2px 4px rgba(0, 0, 0, 0.5),
 		0 0 20px rgba(255, 215, 0, 0.3);
 	letter-spacing: 0.1em;
-}
-
-/* App container above body overlays */
-#app {
-	position: relative;
-	z-index: 1;
 }
 
 .hidden {
@@ -207,7 +258,32 @@ h3,
 
 #join-form {
 	display: flex;
+	flex-direction: column;
 	gap: 1rem;
+	align-items: center;
+}
+
+#join-form .join-option {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	cursor: pointer;
+	font-size: 0.9rem;
+	color: var(--text-muted);
+}
+
+#join-form .join-option input[type="checkbox"] {
+	width: 18px;
+	height: 18px;
+	accent-color: var(--gold);
+	cursor: pointer;
+}
+
+#join-form .form-row {
+	display: flex;
+	gap: 1rem;
+	width: 100%;
+	max-width: 400px;
 }
 
 /* Input styling - Inset Felt */
@@ -397,67 +473,96 @@ button.loading::after {
 	white-space: nowrap;
 }
 
-/* Admin controls - add candidates */
-#admin-controls {
-	margin: 1rem 0;
+/* Game screen - full viewport centered */
+#game-screen.screen {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 100vh;
+	padding: 1rem;
 }
 
-.add-candidates-section {
-	background: linear-gradient(180deg, rgba(61, 35, 20, 0.95) 0%, rgba(45, 26, 15, 0.95) 100%);
-	border: var(--card-border-width) solid var(--brass);
-	border-radius: var(--card-border-radius);
-	box-shadow:
-		inset 0 2px 4px rgba(255, 215, 0, 0.1),
-		0 8px 32px rgba(0, 0, 0, 0.5),
-		0 0 0 1px var(--wood-dark);
-	padding: 1.5rem;
-	margin-bottom: 1rem;
+/* Game layout - two column */
+.game-layout {
+	display: grid;
+	grid-template-columns: auto 320px;
+	gap: 3rem;
+	align-items: center;
+	max-width: 1400px;
+	width: 100%;
 }
 
-.add-candidates-section h3 {
-	margin-bottom: 1rem;
-	color: var(--gold);
+.game-left {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 1rem;
+}
+
+.game-right {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	align-self: center;
+}
+
+/* Panel header */
+.panel-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 0.75rem;
+}
+
+.panel-header h3 {
 	font-family: var(--font-display);
+	font-size: 0.9rem;
+	color: var(--gold);
 	text-transform: uppercase;
 	letter-spacing: 0.1em;
-	text-shadow:
-		0 2px 4px rgba(0, 0, 0, 0.5),
-		0 0 20px rgba(255, 215, 0, 0.3);
+	margin: 0;
 }
 
-#candidates-textarea {
-	width: 100%;
-	min-height: 100px;
-	padding: 1rem;
-	font-size: 1rem;
-	background: var(--felt-dark);
-	color: var(--ivory);
-	border: 2px solid var(--brass);
+.admin-badge {
+	background: linear-gradient(180deg, var(--brass-light) 0%, var(--brass) 100%);
+	color: var(--wood-dark);
+	padding: 0.2rem 0.5rem;
 	border-radius: 4px;
-	resize: vertical;
+	font-size: 0.65rem;
+	font-family: var(--font-display);
+	text-transform: uppercase;
+	font-weight: bold;
+	letter-spacing: 0.05em;
+}
+
+/* Admin controls - compact add candidate */
+#admin-controls {
+	margin-bottom: 0.5rem;
+}
+
+.add-candidate-row {
+	display: flex;
+	gap: 0.5rem;
+}
+
+.add-candidate-row input {
+	flex: 1;
+	padding: 0.6rem 0.8rem;
+	font-size: 0.9rem;
+}
+
+.add-candidate-row button {
+	padding: 0.6rem 1rem;
+	font-size: 1.2rem;
 	font-family: var(--font-body);
-	margin-bottom: 1rem;
-	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
-	transition: all 0.2s ease;
-}
-
-#candidates-textarea:focus {
-	outline: none;
-	border-color: var(--gold);
-	box-shadow:
-		inset 0 2px 4px rgba(0, 0, 0, 0.3),
-		0 0 10px rgba(255, 215, 0, 0.3);
-}
-
-#candidates-textarea::placeholder {
-	color: var(--text-muted);
+	min-width: 44px;
 }
 
 /* Candidates list */
 #candidates-list {
 	display: flex;
-	flex-wrap: wrap;
-	gap: 1rem;
+	flex-direction: column;
+	gap: 0.5rem;
 	margin: 1rem 0;
 }
 
@@ -471,13 +576,13 @@ button.loading::after {
 /* Candidate cards - Table Betting Spots */
 .candidate-card {
 	background: linear-gradient(180deg, var(--felt-medium) 0%, var(--felt-dark) 100%);
-	border: 3px solid var(--brass);
-	border-radius: 8px;
-	padding: 1rem 1.5rem;
+	border: 2px solid var(--brass);
+	border-radius: 6px;
+	padding: 0.6rem 0.8rem;
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
-	box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+	box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3);
 	transition:
 		transform 0.2s ease,
 		box-shadow 0.2s ease,
@@ -561,21 +666,18 @@ button.loading::after {
 
 /* Spectators section */
 #spectators-section {
-	margin-top: 2rem;
-	padding-top: 1.5rem;
-	border-top: 2px solid var(--brass);
+	margin-top: auto;
+	padding-top: 1rem;
+	border-top: 1px solid var(--brass);
 }
 
 #spectators-section h3 {
-	margin-bottom: 1rem;
-	color: var(--gold);
-	font-size: 1rem;
+	margin-bottom: 0.5rem;
+	color: var(--brass-light);
+	font-size: 0.7rem;
 	font-family: var(--font-display);
 	text-transform: uppercase;
 	letter-spacing: 0.1em;
-	text-shadow:
-		0 2px 4px rgba(0, 0, 0, 0.5),
-		0 0 20px rgba(255, 215, 0, 0.3);
 }
 
 #spectators-list {
@@ -591,19 +693,14 @@ button.loading::after {
 
 /* Spectator cards */
 .spectator-card {
-	background: linear-gradient(180deg, rgba(61, 35, 20, 0.7) 0%, rgba(45, 26, 15, 0.7) 100%);
-	border: 2px solid var(--brass);
-	border-radius: 8px;
-	padding: 0.5rem 1rem;
-	display: flex;
-	gap: 0.5rem;
+	background: rgba(61, 35, 20, 0.5);
+	border: 1px solid var(--brass);
+	border-radius: 4px;
+	padding: 0.3rem 0.6rem;
+	display: inline-flex;
+	gap: 0.3rem;
 	align-items: center;
-	font-size: 0.9rem;
-	transition:
-		transform 0.2s ease,
-		box-shadow 0.2s ease,
-		border-color 0.2s ease;
-	transform-style: preserve-3d;
+	font-size: 0.8rem;
 }
 
 .spectator-card:hover {
@@ -646,17 +743,17 @@ button.loading::after {
 }
 
 #phase-indicator {
-	font-size: 1.25rem;
+	font-size: 0.85rem;
 	text-align: center;
-	padding: 0.75rem 1.5rem;
-	border-radius: 8px;
-	background: linear-gradient(180deg, rgba(61, 35, 20, 0.95) 0%, rgba(45, 26, 15, 0.95) 100%);
-	border: 2px solid var(--brass);
-	margin: 1rem 0;
+	padding: 0.5rem 1rem;
 	font-family: var(--font-display);
 	text-transform: uppercase;
 	letter-spacing: 0.1em;
-	color: var(--gold);
+	color: var(--brass-light);
+}
+
+#phase-indicator:empty {
+	display: none;
 }
 
 /* Betting indicator */
@@ -725,7 +822,6 @@ button.loading::after {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	margin: 2rem 0;
 }
 
 #wheel-container canvas {
@@ -878,6 +974,21 @@ button.loading::after {
 }
 
 /* Mobile responsive styles */
+@media (max-width: 900px) {
+	.game-layout {
+		grid-template-columns: 1fr;
+		gap: 1.5rem;
+	}
+
+	.game-left {
+		order: 1;
+	}
+
+	.game-right {
+		order: 2;
+	}
+}
+
 @media (max-width: 600px) {
 	#join-screen h1,
 	#landing-screen h1,
@@ -900,18 +1011,9 @@ button.loading::after {
 		font-size: 2rem;
 	}
 
-	#player-list {
-		justify-content: center;
-	}
-
-	.player-card {
-		width: 100%;
-		justify-content: center;
-	}
-
 	#wheel-container canvas {
-		max-width: 300px;
-		max-height: 300px;
+		max-width: 320px;
+		max-height: 320px;
 	}
 
 	.result-content {
@@ -919,7 +1021,7 @@ button.loading::after {
 	}
 
 	.candidate-card {
-		padding: 0.75rem 1rem;
+		padding: 0.5rem 0.75rem;
 	}
 
 	.section-header {

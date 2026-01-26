@@ -220,11 +220,21 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 		return;
 	}
 
-	const isAdmin = spectatorId === room.adminId;
+	// Check if current admin is still connected, if not reassign to this spectator
+	const adminStillConnected = connections.has(room.adminId);
+	if (!adminStillConnected && message.type === "join") {
+		// Reassign admin to this joining spectator
+		rooms.set(roomId, { ...room, adminId: spectatorId });
+		console.log(`Admin reassigned to ${spectatorId} (previous admin disconnected)`);
+	}
+
+	// Re-fetch room after potential admin reassignment and use it for the rest
+	const currentRoom = rooms.get(roomId)!;
+	const isAdmin = spectatorId === currentRoom.adminId;
 
 	// For non-join messages, verify spectator has joined
 	if (message.type !== "join") {
-		const spectatorExists = room.gameState.spectators.some((s) => s.id === spectatorId);
+		const spectatorExists = currentRoom.gameState.spectators.some((s) => s.id === spectatorId);
 		if (!spectatorExists) {
 			sendError(ws, "You must join the game first");
 			return;
@@ -244,9 +254,9 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 				gameState: addSpectator(r.gameState, spectator),
 			}));
 
-			// If admin, also add them as a candidate automatically
-			const updatedRoom = rooms.get(roomId);
-			if (updatedRoom && updatedRoom.adminId === spectatorId) {
+			// Add to candidates if joinAsPlayer is true (default: true)
+			const joinAsPlayer = message.joinAsPlayer !== false;
+			if (joinAsPlayer) {
 				updateRoomState(roomId, (r) => ({
 					...r,
 					gameState: addCandidates(r.gameState, message.name),
@@ -258,7 +268,7 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 		}
 
 		case "placeBet": {
-			if (!canPlaceBet(room.gameState, spectatorId)) {
+			if (!canPlaceBet(currentRoom.gameState, spectatorId)) {
 				sendError(ws, "Cannot place bet at this time");
 				return;
 			}
@@ -275,7 +285,7 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 				sendError(ws, "Only the admin can add candidates");
 				return;
 			}
-			if (room.gameState.phase !== "waiting") {
+			if (currentRoom.gameState.phase !== "waiting") {
 				sendError(ws, "Can only add candidates during waiting phase");
 				return;
 			}
@@ -292,7 +302,7 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 				sendError(ws, "Only the admin can remove candidates");
 				return;
 			}
-			if (room.gameState.phase !== "waiting") {
+			if (currentRoom.gameState.phase !== "waiting") {
 				sendError(ws, "Can only remove candidates during waiting phase");
 				return;
 			}
@@ -309,7 +319,7 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 				sendError(ws, "Only the admin can start betting");
 				return;
 			}
-			if (!canStartBetting(room.gameState)) {
+			if (!canStartBetting(currentRoom.gameState)) {
 				sendError(ws, "Cannot start betting - need candidates");
 				return;
 			}
@@ -327,7 +337,7 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 				sendError(ws, "Only the admin can spin the wheel");
 				return;
 			}
-			if (!canSpin(room.gameState)) {
+			if (!canSpin(currentRoom.gameState)) {
 				sendError(ws, "Cannot spin - not in betting phase");
 				return;
 			}
@@ -398,7 +408,7 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 				sendError(ws, "Only the admin can reset the game");
 				return;
 			}
-			if (!canReset(room.gameState)) {
+			if (!canReset(currentRoom.gameState)) {
 				sendError(ws, "Cannot reset - not in result phase");
 				return;
 			}

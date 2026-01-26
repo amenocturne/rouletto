@@ -47,6 +47,7 @@ export type CreateRoomMessage = {
 export type JoinMessage = {
 	readonly type: "join";
 	readonly name: string;
+	readonly joinAsPlayer?: boolean; // If true, also add to candidates (default: true)
 };
 
 export type PlaceBetMessage = {

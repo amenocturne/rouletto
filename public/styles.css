@@ -1,26 +1,26 @@
 /* Local font faces */
 @font-face {
-	font-family: 'Press Start 2P';
+	font-family: "Press Start 2P";
 	font-style: normal;
 	font-weight: 400;
 	font-display: block;
-	src: url('/fonts/press-start-2p.ttf') format('truetype');
+	src: url("/fonts/press-start-2p.ttf") format("truetype");
 }
 
 @font-face {
-	font-family: 'Roboto';
+	font-family: "Roboto";
 	font-style: normal;
 	font-weight: 400;
 	font-display: block;
-	src: url('/fonts/roboto-400.ttf') format('truetype');
+	src: url("/fonts/roboto-400.ttf") format("truetype");
 }
 
 @font-face {
-	font-family: 'Roboto';
+	font-family: "Roboto";
 	font-style: normal;
 	font-weight: 500;
 	font-display: block;
-	src: url('/fonts/roboto-500.ttf') format('truetype');
+	src: url("/fonts/roboto-500.ttf") format("truetype");
 }
 
 :root {
@@ -206,6 +206,164 @@ h3,
 		inset 0 0 20px rgba(255, 215, 0, 0.05);
 }
 
+/* =====================================================
+   LAYERED CASINO PANEL - Stacked Card Effect
+   ===================================================== */
+.casino-panel {
+	position: relative;
+	background: linear-gradient(165deg, var(--felt-medium) 0%, var(--felt-dark) 50%, #082818 100%);
+	border: 3px solid var(--brass);
+	border-radius: 12px;
+	padding: 1.5rem;
+	z-index: 1;
+
+	/* Inner glow and depth */
+	box-shadow:
+		inset 0 1px 0 rgba(255, 215, 0, 0.15),
+		inset 0 -2px 8px rgba(0, 0, 0, 0.3),
+		0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Stacked layers behind the panel */
+.casino-panel::before,
+.casino-panel::after {
+	content: "";
+	position: absolute;
+	background: linear-gradient(165deg, var(--felt-light) 0%, var(--felt-medium) 100%);
+	border: 3px solid var(--brass);
+	border-radius: 12px;
+	z-index: -1;
+}
+
+/* First backing layer - slight offset */
+.casino-panel::before {
+	inset: 6px -6px -6px 6px;
+	background: linear-gradient(165deg, #1a5035 0%, #0f3520 100%);
+	box-shadow:
+		inset 0 1px 0 rgba(255, 215, 0, 0.1),
+		0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Second backing layer - more offset */
+.casino-panel::after {
+	inset: 12px -12px -12px 12px;
+	background: linear-gradient(165deg, #134028 0%, #0a2a18 100%);
+	border-color: #9a7209;
+	box-shadow:
+		inset 0 1px 0 rgba(255, 215, 0, 0.05),
+		0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* Gold trim accent line at top */
+.casino-panel-header {
+	position: relative;
+	margin: -1.5rem -1.5rem 1rem -1.5rem;
+	padding: 0.75rem 1.5rem;
+	background: linear-gradient(90deg, transparent 0%, rgba(255, 215, 0, 0.08) 50%, transparent 100%);
+	border-bottom: 2px solid var(--brass);
+}
+
+.casino-panel-header h2,
+.casino-panel-header h3 {
+	font-family: var(--font-display);
+	font-size: 0.85rem;
+	color: var(--gold);
+	text-transform: uppercase;
+	letter-spacing: 0.15em;
+	margin: 0;
+	text-shadow:
+		0 2px 4px rgba(0, 0, 0, 0.5),
+		0 0 15px rgba(255, 215, 0, 0.25);
+}
+
+/* Panel content area */
+.casino-panel-content {
+	position: relative;
+}
+
+/* Hover state - subtle lift */
+.casino-panel:hover {
+	transform: translateY(-2px);
+	box-shadow:
+		inset 0 1px 0 rgba(255, 215, 0, 0.2),
+		inset 0 -2px 8px rgba(0, 0, 0, 0.3),
+		0 8px 30px rgba(0, 0, 0, 0.6),
+		0 0 20px rgba(255, 215, 0, 0.1);
+}
+
+.casino-panel:hover::before {
+	box-shadow:
+		inset 0 1px 0 rgba(255, 215, 0, 0.15),
+		0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+.casino-panel:hover::after {
+	box-shadow:
+		inset 0 1px 0 rgba(255, 215, 0, 0.1),
+		0 8px 20px rgba(0, 0, 0, 0.6);
+}
+
+/* Compact variant with less padding */
+.casino-panel.compact {
+	padding: 1rem;
+}
+
+.casino-panel.compact .casino-panel-header {
+	margin: -1rem -1rem 0.75rem -1rem;
+	padding: 0.5rem 1rem;
+}
+
+/* No-stack variant (single layer, no offset effect) */
+.casino-panel.no-stack::before,
+.casino-panel.no-stack::after {
+	display: none;
+}
+
+/* Transitions for layered panels */
+.share-section,
+#join-form {
+	transition:
+		transform 0.2s ease,
+		box-shadow 0.2s ease;
+}
+
+.share-section::before,
+.share-section::after,
+#join-form::before,
+#join-form::after {
+	transition: box-shadow 0.2s ease;
+}
+
+/* Hover states for share and join panels */
+.share-section:hover,
+#join-form:hover {
+	transform: translateY(-2px);
+	box-shadow:
+		inset 0 1px 0 rgba(255, 215, 0, 0.2),
+		inset 0 -2px 8px rgba(0, 0, 0, 0.3),
+		0 8px 30px rgba(0, 0, 0, 0.6),
+		0 0 20px rgba(255, 215, 0, 0.1);
+}
+
+.share-section:hover::before,
+#join-form:hover::before {
+	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+.share-section:hover::after,
+#join-form:hover::after {
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+}
+
+/* Focus-within for input interaction */
+#join-form:focus-within {
+	box-shadow:
+		inset 0 1px 0 rgba(255, 215, 0, 0.25),
+		inset 0 -2px 8px rgba(0, 0, 0, 0.3),
+		0 6px 25px rgba(0, 0, 0, 0.5),
+		0 0 25px rgba(255, 215, 0, 0.15);
+}
+
 /* Section headers with flair - Ornate Casino Style */
 .section-header {
 	font-family: var(--font-display);
@@ -269,34 +427,193 @@ h3,
 	display: inline-block;
 }
 
+/* Join Form - Layered Panel Style */
 #join-form {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	gap: 1rem;
 	align-items: center;
+	background: linear-gradient(165deg, var(--felt-medium) 0%, var(--felt-dark) 50%, #082818 100%);
+	border: 3px solid var(--brass);
+	border-radius: 12px;
+	padding: 1.5rem 2rem;
+	width: 100%;
+	max-width: 400px;
+	z-index: 1;
+	box-shadow:
+		inset 0 1px 0 rgba(255, 215, 0, 0.15),
+		inset 0 -2px 8px rgba(0, 0, 0, 0.3),
+		0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Stacked layers for join form */
+#join-form::before,
+#join-form::after {
+	content: "";
+	position: absolute;
+	background: linear-gradient(165deg, var(--felt-light) 0%, var(--felt-medium) 100%);
+	border: 3px solid var(--brass);
+	border-radius: 12px;
+	z-index: -1;
+}
+
+#join-form::before {
+	inset: 5px -5px -5px 5px;
+	background: linear-gradient(165deg, #1a5035 0%, #0f3520 100%);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+#join-form::after {
+	inset: 10px -10px -10px 10px;
+	background: linear-gradient(165deg, #134028 0%, #0a2a18 100%);
+	border-color: #9a7209;
+	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* Inner decorative border for join form */
+#join-form .form-title::before {
+	content: "";
+	position: absolute;
+	top: 8px;
+	left: 8px;
+	right: 8px;
+	bottom: 8px;
+	border: 1px solid rgba(255, 215, 0, 0.15);
+	border-radius: 6px;
+	pointer-events: none;
+}
+
+#join-form .form-title {
+	font-family: var(--font-display);
+	font-size: 0.75rem;
+	color: var(--gold);
+	text-transform: uppercase;
+	letter-spacing: 0.15em;
+	margin-bottom: 0.5rem;
+	text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+	position: relative;
+	z-index: 1;
+}
+
+#join-form input[type="text"] {
+	width: 100%;
+	background: rgba(0, 30, 15, 0.6);
+}
+
+#join-form button[type="submit"] {
+	width: 100%;
+	margin-top: 0.5rem;
 }
 
 #join-form .join-option {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
+	gap: 0.75rem;
 	cursor: pointer;
-	font-size: 0.9rem;
-	color: var(--text-muted);
+	font-size: 0.85rem;
+	color: var(--cream);
+	padding: 0.5rem 0;
+	width: 100%;
+	justify-content: flex-start;
+	transition: color 0.2s ease;
 }
 
+#join-form .join-option:hover {
+	color: var(--ivory);
+}
+
+#join-form .join-option span {
+	/* Left-aligned text next to checkbox */
+}
+
+/* Custom Casino Checkbox - Poker Chip Style */
+/* Custom checkbox wrapper to stay in document flow */
+#join-form .join-option .checkbox-chip {
+	position: relative;
+	width: 28px;
+	height: 28px;
+	flex-shrink: 0;
+	border-radius: 50%;
+	background: linear-gradient(165deg, var(--felt-medium) 0%, var(--felt-dark) 100%);
+	border: 3px dashed var(--brass);
+	box-shadow:
+		inset 0 2px 4px rgba(0, 0, 0, 0.3),
+		inset 0 -1px 2px rgba(255, 215, 0, 0.1),
+		0 2px 4px rgba(0, 0, 0, 0.3);
+	transition: all 0.2s ease;
+}
+
+/* Inner gold center for checked state */
+#join-form .join-option .checkbox-chip::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	border: 2px solid transparent;
+	transition: all 0.2s ease;
+	pointer-events: none;
+}
+
+/* Hide native checkbox visually but keep accessible */
 #join-form .join-option input[type="checkbox"] {
-	width: 18px;
-	height: 18px;
-	accent-color: var(--gold);
+	position: absolute;
+	opacity: 0;
+	width: 28px;
+	height: 28px;
+	margin: 0;
 	cursor: pointer;
+}
+
+/* Hover state */
+#join-form .join-option:hover .checkbox-chip {
+	border-color: var(--gold);
+	box-shadow:
+		inset 0 2px 4px rgba(0, 0, 0, 0.3),
+		inset 0 -1px 2px rgba(255, 215, 0, 0.15),
+		0 2px 4px rgba(0, 0, 0, 0.3),
+		0 0 10px rgba(255, 215, 0, 0.2);
+}
+
+/* Checked state - gold filled center */
+#join-form .join-option:has(input:checked) .checkbox-chip {
+	background: linear-gradient(165deg, var(--felt-light) 0%, var(--felt-medium) 100%);
+	border-color: var(--gold);
+	box-shadow:
+		inset 0 2px 4px rgba(0, 0, 0, 0.2),
+		inset 0 -1px 2px rgba(255, 215, 0, 0.2),
+		0 2px 4px rgba(0, 0, 0, 0.3),
+		0 0 12px rgba(255, 215, 0, 0.35);
+}
+
+/* Gold center dot when checked */
+#join-form .join-option:has(input:checked) .checkbox-chip::after {
+	background: radial-gradient(circle at 40% 40%, var(--gold) 0%, var(--brass) 100%);
+	border-color: var(--brass-light);
+	box-shadow:
+		inset 0 1px 2px rgba(255, 255, 255, 0.3),
+		0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Focus state for accessibility */
+#join-form .join-option:has(input:focus-visible) .checkbox-chip {
+	outline: 2px solid var(--gold);
+	outline-offset: 2px;
+}
+
+/* Active/pressed state */
+#join-form .join-option:active .checkbox-chip {
+	transform: scale(0.95);
 }
 
 #join-form .form-row {
 	display: flex;
 	gap: 1rem;
 	width: 100%;
-	max-width: 400px;
 }
 
 /* Input styling - Inset Felt */
@@ -449,24 +766,68 @@ button.loading::after {
 	}
 }
 
-/* Share URL section */
+/* Share URL section - Layered Panel Style */
 .share-section {
-	background: linear-gradient(180deg, rgba(61, 35, 20, 0.95) 0%, rgba(45, 26, 15, 0.95) 100%);
-	border: var(--card-border-width) solid var(--brass);
-	border-radius: var(--card-border-radius);
-	box-shadow:
-		inset 0 2px 4px rgba(255, 215, 0, 0.1),
-		0 8px 32px rgba(0, 0, 0, 0.5),
-		0 0 0 1px var(--wood-dark);
-	padding: 1.5rem;
+	position: relative;
+	background: linear-gradient(165deg, var(--felt-medium) 0%, var(--felt-dark) 50%, #082818 100%);
+	border: 3px solid var(--brass);
+	border-radius: 12px;
+	padding: 1.25rem 1.5rem;
 	width: 100%;
 	max-width: 500px;
 	text-align: center;
+	z-index: 1;
+	box-shadow:
+		inset 0 1px 0 rgba(255, 215, 0, 0.15),
+		inset 0 -2px 8px rgba(0, 0, 0, 0.3),
+		0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Stacked layers for share section */
+.share-section::before,
+.share-section::after {
+	content: "";
+	position: absolute;
+	background: linear-gradient(165deg, var(--felt-light) 0%, var(--felt-medium) 100%);
+	border: 3px solid var(--brass);
+	border-radius: 12px;
+	z-index: -1;
+}
+
+.share-section::before {
+	inset: 5px -5px -5px 5px;
+	background: linear-gradient(165deg, #1a5035 0%, #0f3520 100%);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.share-section::after {
+	inset: 10px -10px -10px 10px;
+	background: linear-gradient(165deg, #134028 0%, #0a2a18 100%);
+	border-color: #9a7209;
+	box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* Inner decorative border for share section */
+.share-section > p:first-child::before {
+	content: "";
+	position: absolute;
+	top: 8px;
+	left: 8px;
+	right: 8px;
+	bottom: 8px;
+	border: 1px solid rgba(255, 215, 0, 0.15);
+	border-radius: 6px;
+	pointer-events: none;
 }
 
 .share-section p {
-	margin-bottom: 1rem;
-	color: var(--text-muted);
+	margin-bottom: 0.75rem;
+	color: var(--gold);
+	font-family: var(--font-display);
+	font-size: 0.7rem;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
 }
 
 .share-url {
@@ -478,11 +839,13 @@ button.loading::after {
 	flex: 1;
 	font-size: 0.875rem;
 	padding: 0.75rem;
+	background: rgba(0, 30, 15, 0.6);
+	border: 2px solid var(--brass);
 }
 
 .copy-btn {
 	padding: 0.75rem 1rem;
-	font-size: 0.875rem;
+	font-size: 0.75rem;
 	white-space: nowrap;
 }
 
@@ -512,45 +875,58 @@ button.loading::after {
 	gap: 1rem;
 }
 
+/* Game right - simple transparent container for cards on felt */
 .game-right {
 	display: flex;
 	flex-direction: column;
 	gap: 1rem;
-	align-self: center;
+	align-self: start;
+	padding: 0.5rem;
 }
 
-/* Panel header */
+/* Panel header - Brass nameplate on felt */
 .panel-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	margin-bottom: 0.75rem;
+	padding: 0.5rem 1rem;
+	background: linear-gradient(180deg, var(--brass-light) 0%, var(--brass) 100%);
+	border: 2px solid var(--wood-dark);
+	border-radius: 4px;
+	box-shadow:
+		0 3px 6px rgba(0, 0, 0, 0.3),
+		0 6px 12px rgba(0, 0, 0, 0.15),
+		inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .panel-header h3 {
 	font-family: var(--font-display);
-	font-size: 0.9rem;
-	color: var(--gold);
+	font-size: 0.75rem;
+	color: var(--wood-dark);
 	text-transform: uppercase;
-	letter-spacing: 0.1em;
+	letter-spacing: 0.12em;
 	margin: 0;
+	text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .admin-badge {
-	background: linear-gradient(180deg, var(--brass-light) 0%, var(--brass) 100%);
-	color: var(--wood-dark);
+	background: linear-gradient(180deg, var(--leather-red) 0%, var(--leather-dark) 100%);
+	color: var(--ivory);
 	padding: 0.2rem 0.5rem;
 	border-radius: 4px;
-	font-size: 0.65rem;
+	font-size: 0.6rem;
 	font-family: var(--font-display);
 	text-transform: uppercase;
 	font-weight: bold;
 	letter-spacing: 0.05em;
+	border: 1px solid var(--wood-dark);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-/* Admin controls - compact add candidate */
+/* Admin controls - add candidate form on felt */
 #admin-controls {
-	margin-bottom: 0.5rem;
+	margin-bottom: 0.75rem;
 }
 
 .add-candidate-row {
@@ -562,6 +938,14 @@ button.loading::after {
 	flex: 1;
 	padding: 0.6rem 0.8rem;
 	font-size: 0.9rem;
+	background: rgba(0, 30, 15, 0.7);
+	border: 2px solid var(--brass);
+	border-radius: 4px;
+}
+
+.add-candidate-row input:focus {
+	border-color: var(--gold);
+	box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
 }
 
 .add-candidate-row button {
@@ -575,49 +959,94 @@ button.loading::after {
 #candidates-list {
 	display: flex;
 	flex-direction: column;
-	gap: 0.5rem;
+	gap: 0.6rem;
 	margin: 1rem 0;
 }
 
 .no-candidates {
-	color: var(--text-muted);
+	color: var(--cream);
 	font-style: italic;
 	text-align: center;
 	width: 100%;
+	padding: 1rem;
+	background: rgba(10, 40, 24, 0.4);
+	border: 1px dashed var(--brass);
+	border-radius: 6px;
+	font-size: 0.9rem;
 }
 
-/* Candidate cards - Table Betting Spots */
+/* Candidate cards - Playing Cards on Felt */
 .candidate-card {
-	background: linear-gradient(180deg, var(--felt-medium) 0%, var(--felt-dark) 100%);
-	border: 2px solid var(--brass);
-	border-radius: 6px;
-	padding: 0.6rem 0.8rem;
+	/* Card-like cream/ivory background */
+	background: linear-gradient(175deg, #fffef8 0%, #f8f4e8 50%, #f0ebe0 100%);
+	border: 3px solid var(--wood-dark);
+	border-radius: 8px;
+	/* Extra right padding to make room for absolutely positioned chips */
+	padding: 0.7rem 8.5rem 0.7rem 1rem;
+	/* Fixed height to prevent growth when chips are added */
+	height: 56px;
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
-	box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3);
-	transition:
-		transform 0.2s ease,
-		box-shadow 0.2s ease,
-		border-color 0.2s ease;
+	gap: 0.6rem;
+	position: relative;
 	transform-style: preserve-3d;
+	/* Subtle 3D tilt like card laying on table */
+	transform: perspective(800px) rotateX(2deg);
+	/* Shadow suggesting it's resting on felt */
+	box-shadow:
+		0 4px 8px rgba(0, 0, 0, 0.25),
+		0 8px 16px rgba(0, 0, 0, 0.15),
+		0 1px 0 rgba(255, 255, 255, 0.8) inset,
+		0 -1px 0 rgba(0, 0, 0, 0.1) inset;
+	transition:
+		transform 0.15s ease,
+		box-shadow 0.15s ease,
+		border-color 0.15s ease;
+}
+
+/* Inner decorative border like a playing card */
+.candidate-card::before {
+	content: "";
+	position: absolute;
+	inset: 4px;
+	border: 1px solid rgba(184, 134, 11, 0.3);
+	border-radius: 5px;
+	pointer-events: none;
+	z-index: -1;
+}
+
+/* Gold corner accent */
+.candidate-card::after {
+	content: "";
+	position: absolute;
+	top: 6px;
+	left: 6px;
+	width: 8px;
+	height: 8px;
+	background: radial-gradient(circle at center, var(--gold) 0%, var(--brass) 100%);
+	border-radius: 50%;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+	z-index: -1;
 }
 
 .candidate-card:hover {
-	border-color: var(--gold);
-	transform: translateY(-4px) rotateX(2deg) rotateY(-2deg);
+	border-color: var(--brass);
+	transform: perspective(800px) rotateX(4deg) rotateY(-2deg) translateY(-6px);
 	box-shadow:
-		inset 0 0 10px rgba(0, 0, 0, 0.3),
-		0 12px 24px rgba(0, 0, 0, 0.4),
-		0 0 20px rgba(255, 215, 0, 0.2);
+		0 12px 24px rgba(0, 0, 0, 0.35),
+		0 20px 40px rgba(0, 0, 0, 0.2),
+		0 0 25px rgba(255, 215, 0, 0.15),
+		0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
 .candidate-card.my-bet {
 	border-color: var(--gold);
-	background: linear-gradient(135deg, var(--felt-medium) 0%, rgba(255, 215, 0, 0.15) 100%);
+	background: linear-gradient(175deg, #fffef8 0%, #fff8e8 50%, rgba(255, 215, 0, 0.15) 100%);
 	box-shadow:
-		inset 0 0 10px rgba(0, 0, 0, 0.3),
-		0 0 20px rgba(255, 215, 0, 0.3);
+		0 4px 8px rgba(0, 0, 0, 0.25),
+		0 8px 16px rgba(0, 0, 0, 0.15),
+		0 0 20px rgba(255, 215, 0, 0.4),
+		0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
 .candidate-card.can-bet {
@@ -625,110 +1054,128 @@ button.loading::after {
 }
 
 .candidate-card.can-bet:hover {
-	transform: translateY(-3px);
-	box-shadow:
-		inset 0 0 10px rgba(0, 0, 0, 0.3),
-		0 6px 20px rgba(0, 0, 0, 0.4),
-		0 0 15px rgba(255, 215, 0, 0.3);
 	border-color: var(--gold);
+	transform: perspective(800px) rotateX(3deg) translateY(-4px);
+	box-shadow:
+		0 8px 16px rgba(0, 0, 0, 0.3),
+		0 12px 24px rgba(0, 0, 0, 0.2),
+		0 0 20px rgba(255, 215, 0, 0.25),
+		0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
 .candidate-name {
-	font-weight: 500;
-	color: var(--ivory);
+	font-weight: 600;
+	color: var(--wood-dark);
+	text-shadow: none;
 }
 
 .bet-count {
 	font-size: 0.75rem;
-	color: var(--brass-light);
-	background: rgba(184, 134, 11, 0.2);
+	color: var(--wood-dark);
+	background: linear-gradient(180deg, rgba(184, 134, 11, 0.2) 0%, rgba(184, 134, 11, 0.3) 100%);
 	padding: 0.25rem 0.5rem;
 	border-radius: 4px;
 	font-family: var(--font-display);
 	border: 1px solid var(--brass);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .remove-candidate-btn {
 	padding: 0.25rem 0.5rem;
 	font-size: 0.75rem;
 	background: linear-gradient(180deg, var(--leather-red) 0%, var(--leather-dark) 100%);
-	border: 2px solid var(--brass);
+	border: 2px solid var(--wood-dark);
 	border-radius: 4px;
 	color: var(--ivory);
 	cursor: pointer;
 	margin-left: auto;
 	box-shadow:
 		inset 0 1px 0 rgba(255, 255, 255, 0.1),
-		0 2px 4px rgba(0, 0, 0, 0.3);
+		0 2px 4px rgba(0, 0, 0, 0.2);
 	transition: all 0.2s ease;
+	/* Prevent card hover from affecting button - lift in 3D space */
+	position: relative;
+	z-index: 1;
+	transform: translateZ(1px);
 }
 
 .remove-candidate-btn:hover {
 	background: linear-gradient(180deg, #8b3a3a 0%, var(--leather-red) 100%);
+	border-color: var(--brass);
 	box-shadow:
 		inset 0 1px 0 rgba(255, 255, 255, 0.2),
-		0 3px 6px rgba(0, 0, 0, 0.4);
+		0 3px 6px rgba(0, 0, 0, 0.3);
 }
 
 .remove-candidate-btn:active {
-	transform: translateY(1px);
+	transform: translateY(1px) translateZ(1px);
 	box-shadow:
 		inset 0 1px 0 rgba(255, 255, 255, 0.1),
-		0 1px 2px rgba(0, 0, 0, 0.3);
+		0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-/* Spectators section */
+/* Spectators section - subtle area on felt */
 #spectators-section {
-	margin-top: auto;
-	padding-top: 1rem;
-	border-top: 1px solid var(--brass);
+	margin-top: 1.5rem;
+	padding: 0.75rem;
+	background: rgba(10, 40, 24, 0.5);
+	border: 1px dashed var(--brass);
+	border-radius: 6px;
+	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 #spectators-section h3 {
 	margin-bottom: 0.5rem;
 	color: var(--brass-light);
-	font-size: 0.7rem;
+	font-size: 0.65rem;
 	font-family: var(--font-display);
 	text-transform: uppercase;
 	letter-spacing: 0.1em;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 #spectators-list {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 0.75rem;
+	gap: 0.5rem;
 }
 
 .no-spectators {
 	color: var(--text-muted);
 	font-style: italic;
+	font-size: 0.85rem;
 }
 
-/* Spectator cards */
+/* Spectator cards - small poker chip style */
 .spectator-card {
-	background: rgba(61, 35, 20, 0.5);
-	border: 1px solid var(--brass);
-	border-radius: 4px;
-	padding: 0.3rem 0.6rem;
+	background: linear-gradient(180deg, var(--felt-medium) 0%, var(--felt-dark) 100%);
+	border: 2px solid var(--brass);
+	border-radius: 20px;
+	padding: 0.25rem 0.65rem;
 	display: inline-flex;
 	gap: 0.3rem;
 	align-items: center;
-	font-size: 0.8rem;
+	font-size: 0.75rem;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+	transition: all 0.2s ease;
 }
 
 .spectator-card:hover {
-	transform: scale(1.02) translateY(-2px);
-	box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+	border-color: var(--gold);
 }
 
 .spectator-card.is-me {
 	border-color: var(--gold);
-	background: linear-gradient(180deg, rgba(61, 35, 20, 0.9) 0%, rgba(45, 26, 15, 0.9) 100%);
-	box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+	background: linear-gradient(180deg, var(--felt-light) 0%, var(--felt-medium) 100%);
+	box-shadow:
+		0 2px 4px rgba(0, 0, 0, 0.2),
+		0 0 10px rgba(255, 215, 0, 0.2);
 }
 
 .spectator-card.has-bet {
-	background: linear-gradient(180deg, rgba(61, 35, 20, 0.9) 0%, rgba(184, 134, 11, 0.2) 100%);
+	background: linear-gradient(180deg, var(--felt-medium) 0%, rgba(184, 134, 11, 0.25) 100%);
 	border-color: var(--brass-light);
 }
 
@@ -739,9 +1186,9 @@ button.loading::after {
 .you-badge {
 	background: linear-gradient(180deg, var(--brass-light) 0%, var(--brass) 100%);
 	color: var(--wood-dark);
-	padding: 0.125rem 0.5rem;
-	border-radius: 4px;
-	font-size: 0.625rem;
+	padding: 0.1rem 0.4rem;
+	border-radius: 10px;
+	font-size: 0.55rem;
 	font-family: var(--font-display);
 	text-transform: uppercase;
 	font-weight: bold;
@@ -1009,15 +1456,47 @@ button.loading::after {
 		font-size: 2.5rem;
 	}
 
+	/* Adjust layered panels on mobile - less offset */
 	#join-form {
-		flex-direction: column;
-		width: 100%;
-		padding: 0 1rem;
+		width: calc(100% - 2rem);
+		max-width: none;
+		padding: 1.25rem 1.5rem;
+		margin: 0 1rem;
 	}
 
-	#join-form input,
-	#join-form button {
-		width: 100%;
+	#join-form::before {
+		inset: 4px -4px -4px 4px;
+	}
+
+	#join-form::after {
+		inset: 8px -8px -8px 8px;
+	}
+
+	.share-section {
+		width: calc(100% - 2rem);
+		max-width: none;
+		margin: 0 1rem;
+		padding: 1rem 1.25rem;
+	}
+
+	.share-section::before {
+		inset: 4px -4px -4px 4px;
+	}
+
+	.share-section::after {
+		inset: 8px -8px -8px 8px;
+	}
+
+	.casino-panel::before {
+		inset: 4px -4px -4px 4px;
+	}
+
+	.casino-panel::after {
+		inset: 8px -8px -8px 8px;
+	}
+
+	.game-right {
+		padding: 0.5rem;
 	}
 
 	.winner-name {
@@ -1034,7 +1513,8 @@ button.loading::after {
 	}
 
 	.candidate-card {
-		padding: 0.5rem 0.75rem;
+		/* Keep right padding for absolutely positioned chips */
+		padding: 0.5rem 7rem 0.5rem 0.75rem;
 	}
 
 	.section-header {
@@ -1124,7 +1604,15 @@ button.loading::after {
 }
 
 .candidate-card .chips-container {
+	/* Absolutely position chips so they don't affect card height */
+	position: absolute;
+	right: 0.75rem;
+	top: 50%;
+	transform: translateY(-50%);
 	max-width: 120px;
+	/* Allow chips to overflow vertically without growing card */
+	max-height: 40px;
+	overflow: visible;
 }
 
 /* Result card animation - Playing Card Style */
@@ -1260,99 +1748,268 @@ button.loading::after {
 }
 
 .lever-slot {
-	width: 30px;
-	height: 120px;
-	background: linear-gradient(90deg, #2a1810 0%, #4a3020 50%, #2a1810 100%);
-	border: 3px solid var(--brass);
-	border-radius: 8px;
 	position: relative;
-	box-shadow: inset -4px 0 8px rgba(0, 0, 0, 0.5);
+	width: 36px;
+	height: 140px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
 }
 
+/* The fixed track/channel - the slot the stick slides through */
 .lever-track {
 	position: absolute;
-	left: 50%;
-	top: 10px;
-	bottom: 10px;
-	width: 4px;
-	transform: translateX(-50%);
-	background: var(--brass);
-	border-radius: 2px;
+	bottom: 0;
+	width: 24px;
+	height: 90px;
+	background: linear-gradient(90deg,
+		#1a0f08 0%,
+		#2a1810 15%,
+		#3a2515 50%,
+		#2a1810 85%,
+		#1a0f08 100%
+	);
+	border: 3px solid var(--brass);
+	border-radius: 6px;
+	box-shadow:
+		inset 0 4px 12px rgba(0, 0, 0, 0.7),
+		inset 0 -2px 6px rgba(0, 0, 0, 0.3),
+		0 4px 8px rgba(0, 0, 0, 0.5);
+	/* Inner groove */
+	overflow: hidden;
 }
 
-.lever-handle {
+.lever-track::before {
+	content: '';
 	position: absolute;
 	left: 50%;
-	top: 10px;
+	top: 8px;
+	bottom: 8px;
+	width: 6px;
 	transform: translateX(-50%);
-	transition: top 0.15s ease-out;
-	z-index: 1;
+	background: linear-gradient(90deg,
+		#0a0605 0%,
+		#151010 50%,
+		#0a0605 100%
+	);
+	border-radius: 3px;
+	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Decorative brass rivets on the track */
+.lever-track::after {
+	content: '';
+	position: absolute;
+	top: 6px;
+	left: 3px;
+	width: 4px;
+	height: 4px;
+	background: radial-gradient(circle at 30% 30%, #d4a84b 0%, #a07830 100%);
+	border-radius: 50%;
+	box-shadow:
+		12px 0 0 0 #a07830,
+		0 70px 0 0 #a07830,
+		12px 70px 0 0 #a07830;
+}
+
+/* The movable handle (ball + stick) */
+.lever-handle {
+	position: absolute;
+	top: 0;
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	z-index: 2;
+	transition: transform 0.15s ease-out;
 }
 
 .lever-handle.pulled {
-	top: 70px;
-	transition: top 0.1s ease-in;
+	/* Ball moves down */
+	transform: translateX(-50%) translateY(100px);
+	transition: transform 0.12s ease-in;
 }
 
 .lever-handle.released {
-	animation: leverSpringBack 0.4s ease-out forwards;
+	animation: leverSpringBack 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 @keyframes leverSpringBack {
 	0% {
-		top: 70px;
+		transform: translateX(-50%) translateY(100px);
 	}
-	40% {
-		top: 5px;
+	50% {
+		transform: translateX(-50%) translateY(-8px);
 	}
 	70% {
-		top: 15px;
+		transform: translateX(-50%) translateY(4px);
+	}
+	85% {
+		transform: translateX(-50%) translateY(-2px);
 	}
 	100% {
-		top: 10px;
+		transform: translateX(-50%) translateY(0);
 	}
 }
 
-.lever-stick {
-	width: 8px;
+/* The red ball grip */
+.lever-ball {
+	width: 40px;
 	height: 40px;
-	background: linear-gradient(90deg, #888 0%, #ccc 50%, #888 100%);
-	border-radius: 4px;
-	margin: 0 auto;
+	background: radial-gradient(circle at 35% 35%,
+		#ff6666 0%,
+		#ff3333 20%,
+		#cc0000 50%,
+		#990000 80%,
+		#660000 100%
+	);
+	border-radius: 50%;
+	border: 3px solid var(--brass);
+	box-shadow:
+		inset -6px -6px 12px rgba(0, 0, 0, 0.4),
+		inset 4px 4px 8px rgba(255, 255, 255, 0.1),
+		0 6px 12px rgba(0, 0, 0, 0.5),
+		0 2px 4px rgba(0, 0, 0, 0.3);
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
+	position: relative;
+	z-index: 2;
 }
 
-.lever-ball {
-	width: 36px;
-	height: 36px;
-	background: radial-gradient(circle at 30% 30%, #ff4444 0%, #aa0000 70%, #660000 100%);
+/* Glossy highlight on ball */
+.lever-ball::before {
+	content: '';
+	position: absolute;
+	top: 6px;
+	left: 8px;
+	width: 12px;
+	height: 8px;
+	background: radial-gradient(ellipse at center,
+		rgba(255, 255, 255, 0.5) 0%,
+		rgba(255, 255, 255, 0) 100%
+	);
 	border-radius: 50%;
-	border: 2px solid var(--brass);
-	margin: 0 auto;
-	margin-top: -4px;
+}
+
+/* The chrome/metal stick */
+.lever-stick {
+	width: 10px;
+	height: 70px;
+	background: linear-gradient(90deg,
+		#666 0%,
+		#999 20%,
+		#ddd 45%,
+		#fff 50%,
+		#ddd 55%,
+		#999 80%,
+		#666 100%
+	);
+	border-radius: 5px;
+	margin-top: -2px;
 	box-shadow:
-		inset -4px -4px 8px rgba(0, 0, 0, 0.3),
-		0 4px 8px rgba(0, 0, 0, 0.4);
-	transition: transform 0.1s ease;
+		0 4px 8px rgba(0, 0, 0, 0.4),
+		inset 0 0 2px rgba(255, 255, 255, 0.5);
+	position: relative;
+	/* Bottom stays fixed at lever housing */
+	transform-origin: bottom center;
+	transition: transform 0.15s ease-out;
+}
+
+/* Rod shrinks when pulled - bottom stays fixed, top follows ball */
+.lever-handle.pulled .lever-stick {
+	/* TranslateY(-100px) compensates for handle moving down, keeping bottom fixed */
+	/* scaleY(0.15) shrinks from bottom toward top */
+	transform: translateY(-100px) scaleY(0.15);
+	transition: transform 0.12s ease-in;
+}
+
+/* Rod springs back with handle */
+.lever-handle.released .lever-stick {
+	animation: stickSpringBack 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes stickSpringBack {
+	0% {
+		transform: translateY(-100px) scaleY(0.15);
+	}
+	50% {
+		transform: translateY(8px) scaleY(1.1);
+	}
+	70% {
+		transform: translateY(-4px) scaleY(0.95);
+	}
+	85% {
+		transform: translateY(2px) scaleY(1.03);
+	}
+	100% {
+		transform: translateY(0) scaleY(1);
+	}
+}
+
+/* Brass collar where stick meets ball */
+.lever-stick::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: -3px;
+	width: 16px;
+	height: 8px;
+	background: linear-gradient(180deg,
+		#d4a84b 0%,
+		#a07830 50%,
+		#806020 100%
+	);
+	border-radius: 3px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Bottom cap of stick */
+.lever-stick::after {
+	content: '';
+	position: absolute;
+	bottom: 0;
+	left: -2px;
+	width: 14px;
+	height: 6px;
+	background: linear-gradient(180deg,
+		#888 0%,
+		#555 100%
+	);
+	border-radius: 0 0 4px 4px;
 }
 
 .lever-container:hover .lever-ball {
-	transform: scale(1.05);
+	transform: scale(1.08);
 	box-shadow:
-		inset -4px -4px 8px rgba(0, 0, 0, 0.3),
-		0 4px 8px rgba(0, 0, 0, 0.4),
-		0 0 15px rgba(255, 68, 68, 0.4);
+		inset -6px -6px 12px rgba(0, 0, 0, 0.4),
+		inset 4px 4px 8px rgba(255, 255, 255, 0.1),
+		0 6px 12px rgba(0, 0, 0, 0.5),
+		0 2px 4px rgba(0, 0, 0, 0.3),
+		0 0 20px rgba(255, 50, 50, 0.5),
+		0 0 40px rgba(255, 50, 50, 0.2);
+}
+
+/* Glow effect on track when handle is pulled */
+.lever-slot:has(.lever-handle.pulled) .lever-track,
+.lever-slot:has(.lever-handle.released) .lever-track {
+	box-shadow:
+		inset 0 4px 12px rgba(0, 0, 0, 0.7),
+		inset 0 -2px 6px rgba(0, 0, 0, 0.3),
+		0 4px 8px rgba(0, 0, 0, 0.5),
+		0 0 15px rgba(255, 215, 0, 0.3);
 }
 
 .lever-label {
 	font-family: var(--font-display);
 	color: var(--gold);
-	font-size: 0.9rem;
-	margin-top: 0.5rem;
+	font-size: 0.85rem;
+	margin-top: 0.75rem;
 	text-transform: uppercase;
 	letter-spacing: 0.1em;
 	text-shadow:
 		0 2px 4px rgba(0, 0, 0, 0.5),
 		0 0 10px rgba(255, 215, 0, 0.3);
+	white-space: nowrap;
 }
 
 /* Settings Panel */

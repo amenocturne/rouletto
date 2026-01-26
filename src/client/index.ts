@@ -281,10 +281,11 @@ const showJoinScreen = (): void => {
 			<h1>Casino Wheel</h1>
 			${shareSection}
 			<form id="join-form">
-				<input type="text" id="name-input" placeholder="Enter your name" required maxlength="20">
+				<div class="form-title">Enter the Game</div>
+				<input type="text" id="name-input" placeholder="Your name" required maxlength="20">
 				<label class="join-option">
-					<input type="checkbox" id="join-as-player" checked>
-					<span>Join as player (add me to the wheel)</span>
+					<span class="checkbox-chip"><input type="checkbox" id="spectator-mode"></span>
+					<span>Spectator</span>
 				</label>
 				<button type="submit">Join Game</button>
 			</form>
@@ -336,14 +337,15 @@ const showJoinScreen = (): void => {
 const setupJoinForm = (): void => {
 	const form = document.getElementById("join-form") as HTMLFormElement | null;
 	const input = document.getElementById("name-input") as HTMLInputElement | null;
-	const joinAsPlayerCheckbox = document.getElementById("join-as-player") as HTMLInputElement | null;
+	const spectatorCheckbox = document.getElementById("spectator-mode") as HTMLInputElement | null;
 
 	if (!form || !input) return;
 
 	form.addEventListener("submit", (e) => {
 		e.preventDefault();
 		const name = input.value.trim();
-		const joinAsPlayer = joinAsPlayerCheckbox?.checked ?? true;
+		// Inverted logic: if spectator mode is checked, joinAsPlayer is false
+		const joinAsPlayer = !(spectatorCheckbox?.checked ?? false);
 		if (name) {
 			send({ type: "join", name, joinAsPlayer });
 		}
@@ -513,7 +515,7 @@ const renderSpectatorsList = (): void => {
 
 	// Filter spectators who are not candidates
 	const pureSpectators = currentState.spectators.filter(
-		(s) => !candidateNames.has(s.name.toLowerCase())
+		(s) => !candidateNames.has(s.name.toLowerCase()),
 	);
 
 	if (pureSpectators.length === 0) {
@@ -834,8 +836,7 @@ const drawWheel = (candidates: readonly Candidate[]): void => {
 		let textRotation = midAngle + Math.PI / 2;
 		// Normalize angle to check if text would be upside down
 		// Text is upside down when midAngle points to bottom half (between π/2 and 3π/2)
-		const normalizedAngle =
-			((midAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+		const normalizedAngle = ((midAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
 		if (normalizedAngle >= Math.PI / 2 && normalizedAngle <= (3 * Math.PI) / 2) {
 			textRotation += Math.PI; // Flip text to be readable
 		}

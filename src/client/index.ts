@@ -1,10 +1,22 @@
-import type { ClientMessage, GameState, Phase, ServerMessage } from "../shared/types";
+import * as PIXI from "pixi.js";
+import type {
+	ClientMessage,
+	GameState,
+	Phase,
+	Player,
+	ServerMessage,
+} from "../shared/types";
 
 // State management
 let currentState: GameState | null = null;
 let myPlayerId: string | null = null;
 let ws: WebSocket | null = null;
 let countdownInterval: number | null = null;
+
+// Pixi.js wheel state
+let pixiApp: PIXI.Application | null = null;
+let wheelContainer: PIXI.Container | null = null;
+let isPixiInitializing = false;
 
 // WebSocket connection
 const connect = (): void => {
@@ -25,6 +37,12 @@ const connect = (): void => {
 		if (countdownInterval !== null) {
 			clearInterval(countdownInterval);
 			countdownInterval = null;
+		}
+		// Cleanup Pixi
+		if (pixiApp) {
+			pixiApp.destroy(true, { children: true, texture: true });
+			pixiApp = null;
+			wheelContainer = null;
 		}
 		// Show user-visible feedback
 		const app = document.getElementById("app");
@@ -189,6 +207,114 @@ const renderCountdown = (): void => {
 	countdownInterval = window.setInterval(updateCountdown, 1000);
 };
 
+// Segment colors for the wheel
+const SEGMENT_COLORS = [
+	0xe74c3c, // red
+	0x3498db, // blue
+	0x2ecc71, // green
+	0x9b59b6, // purple
+	0xf39c12, // orange
+	0x1abc9c, // teal
+	0xe91e63, // pink
+	0x00bcd4, // cyan
+];
+
+const getSegmentColor = (index: number): number => {
+	return SEGMENT_COLORS[index % SEGMENT_COLORS.length];
+};
+
+// Draw pointer (fixed at top, doesn't rotate)
+const drawPointer = (): void => {
+	if (!pixiApp) return;
+
+	const pointer = new PIXI.Graphics();
+	pointer.poly([200, 10, 190, 30, 210, 30]);
+	pointer.fill({ color: 0xffd700 });
+	pointer.stroke({ color: 0x000000, width: 2 });
+
+	pixiApp.stage.addChild(pointer);
+};
+
+// Draw the wheel with player segments
+const drawWheel = (players: readonly Player[]): void => {
+	if (!wheelContainer || !pixiApp) return;
+
+	// Clear previous wheel
+	wheelContainer.removeChildren();
+
+	if (players.length === 0) return;
+
+	const radius = 180;
+	const segmentAngle = (2 * Math.PI) / players.length;
+
+	for (let i = 0; i < players.length; i++) {
+		const player = players[i];
+		const startAngle = i * segmentAngle - Math.PI / 2; // Start from top
+		const endAngle = startAngle + segmentAngle;
+
+		// Draw segment
+		const segment = new PIXI.Graphics();
+		segment.moveTo(0, 0);
+		segment.arc(0, 0, radius, startAngle, endAngle);
+		segment.lineTo(0, 0);
+		segment.fill({ color: getSegmentColor(i) });
+		segment.stroke({ color: 0xffffff, width: 2 });
+
+		wheelContainer.addChild(segment);
+
+		// Add player name text
+		const midAngle = startAngle + segmentAngle / 2;
+		const textRadius = radius * 0.65;
+		const text = new PIXI.Text({
+			text: player.name.slice(0, 10), // Truncate long names
+			style: {
+				fontFamily: "Arial",
+				fontSize: Math.max(8, Math.min(16, 120 / players.length)),
+				fill: 0xffffff,
+				fontWeight: "bold",
+			},
+		});
+		text.anchor.set(0.5);
+		text.x = Math.cos(midAngle) * textRadius;
+		text.y = Math.sin(midAngle) * textRadius;
+		text.rotation = midAngle + Math.PI / 2; // Align text along radius
+
+		wheelContainer.addChild(text);
+	}
+
+	// Add center circle
+	const center = new PIXI.Graphics();
+	center.circle(0, 0, 25);
+	center.fill({ color: 0x1a1a2e });
+	center.stroke({ color: 0xffd700, width: 3 });
+	wheelContainer.addChild(center);
+};
+
+// Initialize Pixi.js application
+const initPixi = async (): Promise<void> => {
+	const container = document.getElementById("wheel-container");
+	if (!container || pixiApp) return;
+
+	pixiApp = new PIXI.Application();
+	await pixiApp.init({
+		width: 400,
+		height: 400,
+		backgroundAlpha: 0,
+		antialias: true,
+	});
+
+	container.appendChild(pixiApp.canvas);
+
+	// Create wheel container centered
+	wheelContainer = new PIXI.Container();
+	wheelContainer.x = 200;
+	wheelContainer.y = 200;
+	pixiApp.stage.addChild(wheelContainer);
+
+	// Draw pointer/arrow at top (fixed, doesn't rotate)
+	drawPointer();
+};
+
 // Get human-readable phase text
 const getPhaseText = (phase: Phase): string => {
 	switch (phase) {
@@ -220,6 +346,17 @@ const render = (): void => {
 	gameScreen.classList.toggle("hidden", !hasJoined);
 
 	if (!hasJoined) return;
+
+	// Initialize Pixi if needed
+	if (!pixiApp && !isPixiInitializing) {
+		isPixiInitializing = true;
+		initPixi().then(() => {
+			isPixiInitializing = false;
+			if (currentState) drawWheel(currentState.players);
+		});
+	} else if (pixiApp) {
+		drawWheel(currentState.players);
+	}
 
 	// Update phase indicator
 	const phaseIndicator = document.getElementById("phase-indicator");

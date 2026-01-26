@@ -16,5 +16,8 @@
 	},
 	"peerDependencies": {
 		"typescript": "^5"
+	},
+	"dependencies": {
+		"pixi.js": "^8.15.0"
 	}
 }

@@ -151,3 +151,15 @@ button:hover {
 	text-align: center;
 	margin: 1rem 0;
 }
+
+/* Wheel container */
+#wheel-container {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin: 2rem 0;
+}
+
+#wheel-container canvas {
+	border-radius: 50%;
+}

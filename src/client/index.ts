@@ -1,9 +1,10 @@
-import type { ClientMessage, GameState, ServerMessage } from "../shared/types";
+import type { ClientMessage, GameState, Phase, ServerMessage } from "../shared/types";
 
 // State management
 let currentState: GameState | null = null;
 let myPlayerId: string | null = null;
 let ws: WebSocket | null = null;
+let countdownInterval: number | null = null;
 
 // WebSocket connection
 const connect = (): void => {
@@ -20,6 +21,11 @@ const connect = (): void => {
 	};
 	ws.onclose = () => {
 		console.log("Disconnected");
+		// Clear countdown interval on disconnect
+		if (countdownInterval !== null) {
+			clearInterval(countdownInterval);
+			countdownInterval = null;
+		}
 		// Show user-visible feedback
 		const app = document.getElementById("app");
 		if (app) {
@@ -95,17 +101,107 @@ const renderPlayerList = (): void => {
 
 	container.innerHTML = "";
 
+	const me = currentState.players.find((p) => p.id === myPlayerId);
+	const canBet = currentState.phase === "betting";
+
 	for (const player of currentState.players) {
 		const div = document.createElement("div");
 		div.className = "player-card";
 		if (player.id === myPlayerId) div.classList.add("is-me");
 		if (player.isHost) div.classList.add("is-host");
+		if (me?.bet === player.id) div.classList.add("my-bet");
+		if (player.bet !== null) div.classList.add("has-bet");
+		if (canBet) div.classList.add("can-bet");
 
 		div.innerHTML = `
 			<span class="player-name">${escapeHtml(player.name)}</span>
 			${player.isHost ? '<span class="host-badge">Host</span>' : ""}
+			${player.bet !== null ? '<span class="bet-indicator">🎯</span>' : ""}
 		`;
+
+		// Click to bet
+		if (canBet) {
+			div.addEventListener("click", () => {
+				send({ type: "placeBet", targetId: player.id });
+			});
+		}
+
 		container.appendChild(div);
+	}
+};
+
+// Render host controls
+const renderHostControls = (): void => {
+	const container = document.getElementById("host-controls");
+	if (!container || !currentState) return;
+
+	container.innerHTML = "";
+
+	const me = currentState.players.find((p) => p.id === myPlayerId);
+	if (!me?.isHost) return;
+
+	if (currentState.phase === "waiting") {
+		const btn = document.createElement("button");
+		btn.className = "host-btn";
+		btn.textContent = "Start Betting";
+		btn.addEventListener("click", () => send({ type: "startBetting" }));
+		container.appendChild(btn);
+	}
+
+	if (currentState.phase === "betting") {
+		const btn = document.createElement("button");
+		btn.className = "host-btn";
+		btn.textContent = "Spin the Wheel!";
+		btn.addEventListener("click", () => send({ type: "spin" }));
+		container.appendChild(btn);
+	}
+};
+
+// Render countdown during betting
+const renderCountdown = (): void => {
+	const container = document.getElementById("countdown");
+	if (!container || !currentState) return;
+
+	if (countdownInterval !== null) {
+		clearInterval(countdownInterval);
+		countdownInterval = null;
+	}
+
+	if (currentState.phase !== "betting" || !currentState.bettingEndsAt) {
+		container.textContent = "";
+		return;
+	}
+
+	const bettingEndsAt = currentState.bettingEndsAt; // Capture value locally
+
+	const updateCountdown = (): void => {
+		const now = Date.now();
+		const remaining = Math.max(0, Math.ceil((bettingEndsAt - now) / 1000));
+		container.textContent = `Time remaining: ${remaining}s`;
+
+		if (remaining <= 0 && countdownInterval !== null) {
+			clearInterval(countdownInterval);
+			countdownInterval = null;
+		}
+	};
+
+	updateCountdown();
+	countdownInterval = window.setInterval(updateCountdown, 1000);
+};
+
+// Get human-readable phase text
+const getPhaseText = (phase: Phase): string => {
+	switch (phase) {
+		case "waiting":
+			return "Waiting for players...";
+		case "betting":
+			return "Place your bets!";
+		case "spinning":
+			return "Spinning...";
+		case "result":
+			return "Result!";
+		default:
+			return phase;
 	}
 };
 
@@ -128,11 +224,12 @@ const render = (): void => {
 	// Update phase indicator
 	const phaseIndicator = document.getElementById("phase-indicator");
 	if (phaseIndicator) {
-		phaseIndicator.textContent = `Phase: ${currentState.phase}`;
+		phaseIndicator.textContent = getPhaseText(currentState.phase);
 	}
 
-	// Render player list
 	renderPlayerList();
+	renderHostControls();
+	renderCountdown();
 };
 
 // Initialize on load

@@ -87,6 +87,67 @@ button:hover {
 }
 
 #phase-indicator {
-	color: #888;
+	font-size: 1.25rem;
+	text-align: center;
+	padding: 0.5rem;
+	border-radius: 4px;
+	background: #2a2a4e;
+	margin: 1rem 0;
+}
+
+/* Betting styles */
+.player-card.can-bet {
+	cursor: pointer;
+	transition:
+		transform 0.2s,
+		box-shadow 0.2s;
+}
+
+.player-card.can-bet:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.player-card.my-bet {
+	border: 2px solid gold;
+	box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.bet-indicator {
+	font-size: 0.875rem;
+}
+
+/* Host controls */
+#host-controls {
+	margin-top: 2rem;
+	display: flex;
+	justify-content: center;
+}
+
+.host-btn {
+	padding: 1rem 2rem;
+	font-size: 1.25rem;
+	background: linear-gradient(135deg, #4a9 0%, #3a8 100%);
+	border: none;
+	border-radius: 8px;
+	color: white;
+	cursor: pointer;
+	font-weight: bold;
+	transition:
+		transform 0.2s,
+		box-shadow 0.2s;
+}
+
+.host-btn:hover {
+	transform: scale(1.05);
+	box-shadow: 0 4px 20px rgba(74, 153, 153, 0.4);
+}
+
+/* Countdown */
+#countdown {
+	font-size: 1.5rem;
+	color: #f90;
+	font-weight: bold;
+	text-align: center;
 	margin: 1rem 0;
 }

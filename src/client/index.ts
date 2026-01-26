@@ -582,35 +582,45 @@ const spinWheel = (winnerId: string): void => {
 	requestAnimationFrame(animate);
 };
 
-// Segment colors for the wheel
+// Segment colors for the wheel - vibrant casino-style colors
 const SEGMENT_COLORS = [
-	0xe74c3c, // red
-	0x3498db, // blue
-	0x2ecc71, // green
-	0x9b59b6, // purple
-	0xf39c12, // orange
-	0x1abc9c, // teal
-	0xe91e63, // pink
-	0x00bcd4, // cyan
+	0xdc143c, // crimson red
+	0x1e90ff, // dodger blue
+	0x32cd32, // lime green
+	0x9400d3, // dark violet
+	0xff8c00, // dark orange
+	0x00ced1, // dark turquoise
+	0xff1493, // deep pink
+	0xffd700, // gold
 ];
 
 const getSegmentColor = (index: number): number => {
 	return SEGMENT_COLORS[index % SEGMENT_COLORS.length];
 };
 
-// Draw pointer (fixed at top, doesn't rotate)
+// Draw pointer (fixed at top, doesn't rotate) - leather flapper style
 const drawPointer = (): void => {
 	if (!pixiApp) return;
 
-	const pointer = new PIXI.Graphics();
-	pointer.poly([200, 10, 190, 30, 210, 30]);
-	pointer.fill({ color: 0xffd700 });
-	pointer.stroke({ color: 0x000000, width: 2 });
+	// Mounting bracket (brass)
+	const bracket = new PIXI.Graphics();
+	bracket.rect(190, 0, 20, 18);
+	bracket.fill({ color: 0xdaa520 }); // goldenrod (brass)
+	bracket.stroke({ color: 0xffd700, width: 2 });
+	pixiApp.stage.addChild(bracket);
 
+	// Main pointer body (leather flapper triangle)
+	const pointer = new PIXI.Graphics();
+	pointer.moveTo(200, 15);
+	pointer.lineTo(185, 45);
+	pointer.lineTo(215, 45);
+	pointer.closePath();
+	pointer.fill({ color: 0x8b0000 }); // dark red (leather)
+	pointer.stroke({ color: 0xffd700, width: 2 }); // gold outline
 	pixiApp.stage.addChild(pointer);
 };
 
-// Draw the wheel with candidate segments
+// Draw the wheel with candidate segments - casino style
 const drawWheel = (candidates: readonly Candidate[]): void => {
 	if (!wheelContainer || !pixiApp) return;
 
@@ -622,47 +632,85 @@ const drawWheel = (candidates: readonly Candidate[]): void => {
 	const radius = 180;
 	const segmentAngle = (2 * Math.PI) / candidates.length;
 
+	// Draw outer wooden rim (dark brown with texture effect)
+	const outerRim = new PIXI.Graphics();
+	outerRim.circle(0, 0, radius + 20);
+	outerRim.fill({ color: 0x4a3728 }); // dark wood brown
+	outerRim.circle(0, 0, radius + 15);
+	outerRim.stroke({ color: 0xffd700, width: 3 }); // gold inner edge
+	wheelContainer.addChild(outerRim);
+
+	// Draw segments
 	for (let i = 0; i < candidates.length; i++) {
 		const candidate = candidates[i];
 		const startAngle = i * segmentAngle - Math.PI / 2; // Start from top
 		const endAngle = startAngle + segmentAngle;
 
-		// Draw segment
+		// Segment fill
 		const segment = new PIXI.Graphics();
 		segment.moveTo(0, 0);
 		segment.arc(0, 0, radius, startAngle, endAngle);
 		segment.lineTo(0, 0);
 		segment.fill({ color: getSegmentColor(i) });
-		segment.stroke({ color: 0xffffff, width: 2 });
 
+		// Segment border
+		segment.moveTo(0, 0);
+		segment.arc(0, 0, radius, startAngle, endAngle);
+		segment.lineTo(0, 0);
+		segment.stroke({ color: 0xffffff, width: 2 });
 		wheelContainer.addChild(segment);
 
-		// Add candidate name text
+		// Add peg/divider at segment edge (the little bumps that make clicking sounds)
+		const pegAngle = startAngle;
+		const pegX = Math.cos(pegAngle) * (radius - 5);
+		const pegY = Math.sin(pegAngle) * (radius - 5);
+		const peg = new PIXI.Graphics();
+		peg.circle(pegX, pegY, 4);
+		peg.fill({ color: 0xffd700 }); // gold peg
+		peg.stroke({ color: 0x000000, width: 1 });
+		wheelContainer.addChild(peg);
+
+		// Player name text
 		const midAngle = startAngle + segmentAngle / 2;
-		const textRadius = radius * 0.65;
+		const textRadius = radius * 0.6;
 		const text = new PIXI.Text({
-			text: candidate.name.slice(0, 10), // Truncate long names
+			text: candidate.name.slice(0, 12), // Truncate long names
 			style: {
-				fontFamily: "Arial",
-				fontSize: Math.max(8, Math.min(16, 120 / candidates.length)),
+				fontFamily: "Arial Black, Arial",
+				fontSize: Math.max(10, Math.min(18, 140 / candidates.length)),
 				fill: 0xffffff,
 				fontWeight: "bold",
+				stroke: { color: 0x000000, width: 3 },
 			},
 		});
 		text.anchor.set(0.5);
 		text.x = Math.cos(midAngle) * textRadius;
 		text.y = Math.sin(midAngle) * textRadius;
 		text.rotation = midAngle + Math.PI / 2; // Align text along radius
-
 		wheelContainer.addChild(text);
 	}
 
-	// Add center circle
-	const center = new PIXI.Graphics();
-	center.circle(0, 0, 25);
-	center.fill({ color: 0x1a1a2e });
-	center.stroke({ color: 0xffd700, width: 3 });
-	wheelContainer.addChild(center);
+	// Ornate center hub
+	// Outer ring (wood)
+	const hubOuter = new PIXI.Graphics();
+	hubOuter.circle(0, 0, 35);
+	hubOuter.fill({ color: 0x4a3728 }); // wood
+	hubOuter.stroke({ color: 0xffd700, width: 3 });
+	wheelContainer.addChild(hubOuter);
+
+	// Inner brass cone effect
+	const hubInner = new PIXI.Graphics();
+	hubInner.circle(0, 0, 25);
+	hubInner.fill({ color: 0xdaa520 }); // goldenrod
+	hubInner.stroke({ color: 0xffd700, width: 2 });
+	wheelContainer.addChild(hubInner);
+
+	// Center jewel (ruby red)
+	const centerJewel = new PIXI.Graphics();
+	centerJewel.circle(0, 0, 10);
+	centerJewel.fill({ color: 0xff0000 }); // ruby red
+	centerJewel.stroke({ color: 0xffd700, width: 2 });
+	wheelContainer.addChild(centerJewel);
 };
 
 // Initialize Pixi.js application

@@ -1,4 +1,5 @@
 import * as PIXI from "pixi.js";
+import { CRTFilter, GlowFilter } from "pixi-filters";
 import type {
 	ClientMessage,
 	GameState,
@@ -18,6 +19,8 @@ let pixiApp: PIXI.Application | null = null;
 let wheelContainer: PIXI.Container | null = null;
 let isPixiInitializing = false;
 let isSpinning = false;
+let wheelGlowFilter: GlowFilter | null = null;
+let glowTickerCallback: (() => void) | null = null;
 
 // WebSocket connection
 const connect = (): void => {
@@ -40,10 +43,15 @@ const connect = (): void => {
 			countdownInterval = null;
 		}
 		// Cleanup Pixi
+		if (glowTickerCallback && pixiApp) {
+			pixiApp.ticker.remove(glowTickerCallback);
+			glowTickerCallback = null;
+		}
 		if (pixiApp) {
 			pixiApp.destroy(true, { children: true, texture: true });
 			pixiApp = null;
 			wheelContainer = null;
+			wheelGlowFilter = null;
 		}
 		// Show user-visible feedback
 		const app = document.getElementById("app");
@@ -216,6 +224,35 @@ const easeOutCubic = (t: number): number => {
 const SPIN_DURATION = 5000; // 5 seconds
 const EXTRA_ROTATIONS = 4; // Number of full rotations before landing
 
+// Pulse glow effect on winner reveal
+const pulseWinnerGlow = (): void => {
+	if (!wheelGlowFilter || !pixiApp) return;
+
+	// Remove previous callback if exists (prevents accumulation)
+	if (glowTickerCallback) {
+		pixiApp.ticker.remove(glowTickerCallback);
+	}
+
+	let intensity = 1.5;
+	let increasing = true;
+
+	glowTickerCallback = (): void => {
+		if (!wheelGlowFilter) return;
+
+		if (increasing) {
+			intensity += 0.05;
+			if (intensity >= 4) increasing = false;
+		} else {
+			intensity -= 0.05;
+			if (intensity <= 1.5) increasing = true;
+		}
+
+		wheelGlowFilter.outerStrength = intensity;
+	};
+
+	pixiApp.ticker.add(glowTickerCallback);
+};
+
 // Spin the wheel to land on the winner
 const spinWheel = (winnerId: string): void => {
 	if (!wheelContainer || !currentState || isSpinning) return;
@@ -263,6 +300,7 @@ const spinWheel = (winnerId: string): void => {
 			// Animation complete - wheel landed on winner
 			isSpinning = false;
 			console.log("Spin complete, winner:", winnerId);
+			pulseWinnerGlow();
 		}
 	};
 
@@ -367,11 +405,41 @@ const initPixi = async (): Promise<void> => {
 
 	container.appendChild(pixiApp.canvas);
 
+	// Add CRT filter to entire stage for retro effect
+	const crtFilter = new CRTFilter({
+		curvature: 1,
+		lineWidth: 1,
+		lineContrast: 0.2,
+		verticalLine: false,
+		noise: 0.1,
+		noiseSize: 1,
+		vignetting: 0.3,
+		vignettingAlpha: 0.7,
+		vignettingBlur: 0.5,
+		time: 0,
+	});
+	pixiApp.stage.filters = [crtFilter];
+
+	// Animate CRT filter time for subtle scanline movement
+	pixiApp.ticker.add(() => {
+		crtFilter.time += 0.5;
+	});
+
 	// Create wheel container centered
 	wheelContainer = new PIXI.Container();
 	wheelContainer.x = 200;
 	wheelContainer.y = 200;
 	pixiApp.stage.addChild(wheelContainer);
+
+	// Add glow filter to wheel container
+	wheelGlowFilter = new GlowFilter({
+		distance: 15,
+		outerStrength: 1.5,
+		innerStrength: 0.5,
+		color: 0x00ff88,
+		quality: 0.3,
+	});
+	wheelContainer.filters = [wheelGlowFilter];
 
 	// Draw pointer/arrow at top (fixed, doesn't rotate)
 	drawPointer();

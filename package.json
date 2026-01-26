@@ -18,6 +18,7 @@
 		"typescript": "^5"
 	},
 	"dependencies": {
+		"pixi-filters": "^6.1.5",
 		"pixi.js": "^8.15.0"
 	}
 }

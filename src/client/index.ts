@@ -19,6 +19,7 @@ let isPixiInitializing = false;
 let isSpinning = false;
 let wheelGlowFilter: GlowFilter | null = null;
 let glowTickerCallback: (() => void) | null = null;
+let lastCandidatesJson: string = ""; // Cache to avoid redrawing wheel unnecessarily
 
 // Audio state
 let spinSound: HTMLAudioElement | null = null;
@@ -1020,10 +1021,18 @@ const render = (): void => {
 		isPixiInitializing = true;
 		initPixi().then(() => {
 			isPixiInitializing = false;
-			if (currentState) drawWheel(currentState.candidates);
+			if (currentState) {
+				lastCandidatesJson = JSON.stringify(currentState.candidates);
+				drawWheel(currentState.candidates);
+			}
 		});
 	} else if (pixiApp) {
-		drawWheel(currentState.candidates);
+		// Only redraw wheel if candidates changed
+		const candidatesJson = JSON.stringify(currentState.candidates);
+		if (candidatesJson !== lastCandidatesJson) {
+			lastCandidatesJson = candidatesJson;
+			drawWheel(currentState.candidates);
+		}
 	}
 
 	// Update phase indicator

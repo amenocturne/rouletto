@@ -81,7 +81,7 @@ body {
 	position: relative;
 	text-shadow: 0 0 2px rgba(100, 255, 100, 0.1);
 	perspective: 1000px;
-	overflow-x: hidden;
+	overflow: hidden;
 }
 
 /* App container */
@@ -882,6 +882,33 @@ button.loading::after {
 	gap: 1rem;
 	align-self: start;
 	padding: 0.5rem;
+	max-height: calc(100vh - 2rem);
+	overflow-y: auto;
+}
+
+/* Custom scrollbar for game-right panel */
+.game-right::-webkit-scrollbar {
+	width: 10px;
+}
+
+.game-right::-webkit-scrollbar-track {
+	background: rgba(10, 40, 24, 0.5);
+	border-radius: 5px;
+}
+
+.game-right::-webkit-scrollbar-thumb {
+	background: linear-gradient(180deg, var(--brass-light) 0%, var(--brass) 100%);
+	border-radius: 5px;
+	border: 1px solid var(--wood-dark);
+}
+
+.game-right::-webkit-scrollbar-thumb:hover {
+	background: linear-gradient(180deg, var(--gold) 0%, var(--brass-light) 100%);
+}
+
+.game-right {
+	scrollbar-width: thin;
+	scrollbar-color: var(--brass) rgba(10, 40, 24, 0.5);
 }
 
 /* Panel header - Brass nameplate on felt */
@@ -1033,6 +1060,48 @@ button.loading::after {
 	flex-direction: column;
 	gap: 0.6rem;
 	margin: 1rem 0;
+	max-height: 400px;
+	overflow-y: auto;
+	padding-right: 0.5rem;
+}
+
+/* Custom scrollbar for candidates list */
+#candidates-list::-webkit-scrollbar {
+	width: 12px;
+}
+
+#candidates-list::-webkit-scrollbar-track {
+	background: linear-gradient(90deg, #0a2818 0%, #0d3520 50%, #0a2818 100%);
+	border: 2px solid var(--brass);
+	border-radius: 6px;
+	box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+#candidates-list::-webkit-scrollbar-thumb {
+	background: linear-gradient(180deg, var(--brass-light) 0%, var(--brass) 50%, #8b6914 100%);
+	border-radius: 6px;
+	border: 2px solid var(--wood-dark);
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.3),
+		0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#candidates-list::-webkit-scrollbar-thumb:hover {
+	background: linear-gradient(180deg, var(--gold) 0%, var(--brass-light) 50%, var(--brass) 100%);
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.4),
+		0 2px 4px rgba(0, 0, 0, 0.3),
+		0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+#candidates-list::-webkit-scrollbar-thumb:active {
+	background: linear-gradient(180deg, var(--brass) 0%, #8b6914 100%);
+}
+
+/* Firefox scrollbar */
+#candidates-list {
+	scrollbar-width: thin;
+	scrollbar-color: var(--brass) #0d3520;
 }
 
 .no-candidates {
@@ -1204,6 +1273,33 @@ button.loading::after {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.5rem;
+	max-height: 150px;
+	overflow-y: auto;
+	padding-right: 0.25rem;
+}
+
+/* Custom scrollbar for spectators list */
+#spectators-list::-webkit-scrollbar {
+	width: 8px;
+}
+
+#spectators-list::-webkit-scrollbar-track {
+	background: rgba(10, 40, 24, 0.3);
+	border-radius: 4px;
+}
+
+#spectators-list::-webkit-scrollbar-thumb {
+	background: var(--brass);
+	border-radius: 4px;
+}
+
+#spectators-list::-webkit-scrollbar-thumb:hover {
+	background: var(--brass-light);
+}
+
+#spectators-list {
+	scrollbar-width: thin;
+	scrollbar-color: var(--brass) rgba(10, 40, 24, 0.3);
 }
 
 .no-spectators {

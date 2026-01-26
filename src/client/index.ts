@@ -25,13 +25,46 @@ let spinSound: HTMLAudioElement | null = null;
 let revealSound: HTMLAudioElement | null = null;
 let audioEnabled = false;
 
+// Volume settings (0-1)
+let musicVolume = 0.2; // Default 20%
+let sfxVolume = 0.2; // Default 20%
+
+// Volume settings management
+const loadVolumeSettings = (): void => {
+	const saved = localStorage.getItem("casinoWheelVolume");
+	if (saved) {
+		const settings = JSON.parse(saved);
+		musicVolume = settings.music ?? 0.2;
+		sfxVolume = settings.sfx ?? 0.2;
+	}
+	applyVolume();
+};
+
+const saveVolumeSettings = (): void => {
+	localStorage.setItem(
+		"casinoWheelVolume",
+		JSON.stringify({
+			music: musicVolume,
+			sfx: sfxVolume,
+		}),
+	);
+};
+
+const applyVolume = (): void => {
+	if (spinSound) spinSound.volume = sfxVolume;
+	if (revealSound) revealSound.volume = sfxVolume;
+	// If we add background music later, apply musicVolume to it
+};
+
 // Audio functions
 const initAudio = (): void => {
 	// Create audio elements
 	spinSound = new Audio("/sounds/spin.mp3");
 	spinSound.loop = true;
+	spinSound.volume = sfxVolume;
 
 	revealSound = new Audio("/sounds/reveal.mp3");
+	revealSound.volume = sfxVolume;
 
 	// Preload
 	spinSound.load();
@@ -312,6 +345,24 @@ const escapeHtml = (text: string): string => {
 	return div.innerHTML;
 };
 
+// Add mouse tracking for 3D tilt effect (Balatro-style)
+const addTiltEffect = (element: HTMLElement): void => {
+	element.addEventListener("mousemove", (e) => {
+		const rect = element.getBoundingClientRect();
+		const x = e.clientX - rect.left;
+		const y = e.clientY - rect.top;
+		const centerX = rect.width / 2;
+		const centerY = rect.height / 2;
+		const rotateX = (y - centerY) / 20;
+		const rotateY = (centerX - x) / 20;
+		element.style.transform = `perspective(500px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-4px)`;
+	});
+
+	element.addEventListener("mouseleave", () => {
+		element.style.transform = "";
+	});
+};
+
 // Render admin controls (add candidates textarea)
 const renderAdminControls = (): void => {
 	const container = document.getElementById("admin-controls");
@@ -345,6 +396,35 @@ const renderAdminControls = (): void => {
 	}
 };
 
+// Chip colors for betting display
+const CHIP_COLORS = ["", "blue", "green", "purple", "orange"];
+
+// Get a chip color based on spectator index
+const getChipColor = (spectatorIndex: number): string => {
+	return CHIP_COLORS[spectatorIndex % CHIP_COLORS.length];
+};
+
+// Render betting chips for a candidate
+const renderBettingChips = (candidateId: string): string => {
+	if (!currentState) return "";
+
+	// Find all spectators who bet on this candidate
+	const bettors = currentState.spectators.filter((s) => s.bet === candidateId);
+	if (bettors.length === 0) return "";
+
+	const chips = bettors
+		.map((bettor) => {
+			const spectatorIndex = currentState?.spectators.findIndex((s) => s.id === bettor.id) ?? 0;
+			const colorClass = getChipColor(spectatorIndex);
+			const initial = bettor.name.charAt(0).toUpperCase();
+			const isMe = bettor.id === mySpectatorId;
+			return `<div class="chip ${colorClass}" title="${escapeHtml(bettor.name)}${isMe ? " (You)" : ""}">${initial}</div>`;
+		})
+		.join("");
+
+	return `<div class="chips-container">${chips}</div>`;
+};
+
 // Render candidates list (wheel entries)
 const renderCandidatesList = (): void => {
 	const container = document.getElementById("candidates-list");
@@ -368,12 +448,12 @@ const renderCandidatesList = (): void => {
 		if (me?.bet === candidate.id) div.classList.add("my-bet");
 		if (canBet) div.classList.add("can-bet");
 
-		// Count how many spectators bet on this candidate
-		const betCount = currentState.spectators.filter((s) => s.bet === candidate.id).length;
+		// Get betting chips HTML
+		const chipsHtml = renderBettingChips(candidate.id);
 
 		div.innerHTML = `
 			<span class="candidate-name">${escapeHtml(candidate.name)}</span>
-			${betCount > 0 ? `<span class="bet-count">${betCount} bet${betCount > 1 ? "s" : ""}</span>` : ""}
+			${chipsHtml}
 			${isAdmin && currentState.phase === "waiting" ? '<button class="remove-candidate-btn">X</button>' : ""}
 		`;
 
@@ -394,6 +474,9 @@ const renderCandidatesList = (): void => {
 				send({ type: "removeCandidate", candidateId: candidate.id });
 			});
 		}
+
+		// Add interactive tilt effect (Balatro-style)
+		addTiltEffect(div);
 
 		container.appendChild(div);
 	}
@@ -433,7 +516,7 @@ const renderSpectatorsList = (): void => {
 	}
 };
 
-// Render action controls (start betting, spin)
+// Render action controls (start betting, spin lever)
 const renderActionControls = (): void => {
 	const container = document.getElementById("action-controls");
 	if (!container || !currentState) return;
@@ -451,11 +534,43 @@ const renderActionControls = (): void => {
 	}
 
 	if (currentState.phase === "betting") {
-		const btn = document.createElement("button");
-		btn.className = "host-btn";
-		btn.textContent = "Spin the Wheel!";
-		btn.addEventListener("click", () => send({ type: "spin" }));
-		container.appendChild(btn);
+		// Create slot machine lever instead of button
+		const lever = document.createElement("div");
+		lever.className = "lever-container";
+		lever.innerHTML = `
+			<div class="lever-slot">
+				<div class="lever-track"></div>
+				<div class="lever-handle" id="lever-handle">
+					<div class="lever-ball"></div>
+					<div class="lever-stick"></div>
+				</div>
+			</div>
+			<div class="lever-label">Pull to Spin</div>
+		`;
+
+		lever.onclick = () => {
+			const handle = document.getElementById("lever-handle");
+			if (!handle || handle.classList.contains("pulled")) return;
+
+			// Pull down
+			handle.classList.add("pulled");
+
+			// Release and spring back after delay
+			setTimeout(() => {
+				handle.classList.remove("pulled");
+				handle.classList.add("released");
+
+				// Send spin message
+				send({ type: "spin" });
+
+				// Clean up animation class
+				setTimeout(() => {
+					handle.classList.remove("released");
+				}, 400);
+			}, 300);
+		};
+
+		container.appendChild(lever);
 	}
 };
 
@@ -784,7 +899,7 @@ const getPhaseText = (phase: Phase): string => {
 	}
 };
 
-// Render results overlay
+// Render results overlay with flying card animation
 const renderResultOverlay = (): void => {
 	const overlay = document.getElementById("result-overlay");
 	if (!overlay || !currentState) return;
@@ -811,7 +926,7 @@ const renderResultOverlay = (): void => {
 	const correctGuessers = currentState.spectators.filter((s) => s.bet === currentState.winner);
 
 	overlay.innerHTML = `
-		<div class="result-content">
+		<div class="result-card">
 			<h1 class="result-title">Next Host</h1>
 			<div class="winner-name">${escapeHtml(winner.name)}</div>
 
@@ -897,10 +1012,79 @@ const render = (): void => {
 	renderResultOverlay();
 };
 
+// Render settings panel for volume controls
+const renderSettingsPanel = (): void => {
+	// Check if already exists
+	if (document.getElementById("settings-panel")) return;
+
+	const panel = document.createElement("div");
+	panel.id = "settings-panel";
+	panel.className = "settings-panel";
+	panel.innerHTML = `
+		<button id="settings-toggle" class="settings-toggle" title="Sound Settings">
+			<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+				<path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+				<path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+			</svg>
+		</button>
+		<div id="settings-dropdown" class="settings-dropdown hidden">
+			<div class="settings-header">Sound Settings</div>
+			<div class="volume-control">
+				<label>Music</label>
+				<input type="range" id="music-volume" min="0" max="100" value="${musicVolume * 100}">
+				<span id="music-volume-value">${Math.round(musicVolume * 100)}%</span>
+			</div>
+			<div class="volume-control">
+				<label>Effects</label>
+				<input type="range" id="sfx-volume" min="0" max="100" value="${sfxVolume * 100}">
+				<span id="sfx-volume-value">${Math.round(sfxVolume * 100)}%</span>
+			</div>
+		</div>
+	`;
+
+	document.body.appendChild(panel);
+
+	// Toggle dropdown
+	const toggleBtn = document.getElementById("settings-toggle");
+	if (toggleBtn) {
+		toggleBtn.onclick = () => {
+			const dropdown = document.getElementById("settings-dropdown");
+			if (dropdown) dropdown.classList.toggle("hidden");
+		};
+	}
+
+	// Music volume slider
+	const musicSlider = document.getElementById("music-volume") as HTMLInputElement;
+	if (musicSlider) {
+		musicSlider.oninput = () => {
+			musicVolume = Number.parseInt(musicSlider.value, 10) / 100;
+			const valueDisplay = document.getElementById("music-volume-value");
+			if (valueDisplay) valueDisplay.textContent = `${musicSlider.value}%`;
+			applyVolume();
+			saveVolumeSettings();
+		};
+	}
+
+	// SFX volume slider
+	const sfxSlider = document.getElementById("sfx-volume") as HTMLInputElement;
+	if (sfxSlider) {
+		sfxSlider.oninput = () => {
+			sfxVolume = Number.parseInt(sfxSlider.value, 10) / 100;
+			const valueDisplay = document.getElementById("sfx-volume-value");
+			if (valueDisplay) valueDisplay.textContent = `${sfxSlider.value}%`;
+			applyVolume();
+			saveVolumeSettings();
+		};
+	}
+};
+
 // Initialize on load
 const init = (): void => {
+	loadVolumeSettings();
 	initAudio();
 	enableAudio();
+	renderSettingsPanel();
 
 	const path = window.location.pathname;
 	const roomMatch = path.match(/^\/room\/([a-z0-9]+)$/i);

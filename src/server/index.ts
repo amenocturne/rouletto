@@ -243,6 +243,16 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 				...r,
 				gameState: addSpectator(r.gameState, spectator),
 			}));
+
+			// If admin, also add them as a candidate automatically
+			const updatedRoom = rooms.get(roomId);
+			if (updatedRoom && updatedRoom.adminId === spectatorId) {
+				updateRoomState(roomId, (r) => ({
+					...r,
+					gameState: addCandidates(r.gameState, message.name),
+				}));
+			}
+
 			broadcastState(roomId);
 			break;
 		}

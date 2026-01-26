@@ -17,6 +17,7 @@ let countdownInterval: number | null = null;
 let pixiApp: PIXI.Application | null = null;
 let wheelContainer: PIXI.Container | null = null;
 let isPixiInitializing = false;
+let isSpinning = false;
 
 // WebSocket connection
 const connect = (): void => {
@@ -75,8 +76,7 @@ const handleServerMessage = (message: ServerMessage): void => {
 			render();
 			break;
 		case "spinResult":
-			// Will handle wheel animation later
-			console.log("Winner:", message.winnerId);
+			spinWheel(message.winnerId);
 			break;
 		case "error":
 			alert(message.message);
@@ -205,6 +205,68 @@ const renderCountdown = (): void => {
 
 	updateCountdown();
 	countdownInterval = window.setInterval(updateCountdown, 1000);
+};
+
+// Easing function for smooth deceleration
+const easeOutCubic = (t: number): number => {
+	return 1 - (1 - t) ** 3;
+};
+
+// Spin animation constants
+const SPIN_DURATION = 5000; // 5 seconds
+const EXTRA_ROTATIONS = 4; // Number of full rotations before landing
+
+// Spin the wheel to land on the winner
+const spinWheel = (winnerId: string): void => {
+	if (!wheelContainer || !currentState || isSpinning) return;
+	isSpinning = true;
+
+	const players = currentState.players;
+	const winnerIndex = players.findIndex((p) => p.id === winnerId);
+	if (winnerIndex === -1) {
+		isSpinning = false;
+		return;
+	}
+
+	// Calculate target angle to land on winner's segment
+	// Segments start at -PI/2 (top), pointer is at top
+	const segmentAngle = (2 * Math.PI) / players.length;
+
+	// Add small random offset within segment so it doesn't always land dead center
+	// ±30% of segment width
+	const randomOffset = (Math.random() - 0.5) * segmentAngle * 0.6;
+
+	// Winner's segment center is at: winnerIndex * segmentAngle + segmentAngle/2
+	const winnerSegmentCenter =
+		winnerIndex * segmentAngle + segmentAngle / 2 + randomOffset;
+
+	// The wheel needs to rotate so the winner segment aligns with the pointer at top
+	// If winner is at angle θ from top, we need to rotate by (2π - θ) to bring it to top
+	const targetAngle = 2 * Math.PI - winnerSegmentCenter;
+	const totalRotation = EXTRA_ROTATIONS * 2 * Math.PI + targetAngle;
+
+	// Animation state - normalize to prevent accumulated rotation from becoming very large
+	const startRotation = wheelContainer.rotation % (2 * Math.PI);
+	const startTime = performance.now();
+	const container = wheelContainer; // Capture reference for closure
+
+	const animate = (currentTime: number): void => {
+		const elapsed = currentTime - startTime;
+		const progress = Math.min(elapsed / SPIN_DURATION, 1);
+		const easedProgress = easeOutCubic(progress);
+
+		container.rotation = startRotation + totalRotation * easedProgress;
+
+		if (progress < 1) {
+			requestAnimationFrame(animate);
+		} else {
+			// Animation complete - wheel landed on winner
+			isSpinning = false;
+			console.log("Spin complete, winner:", winnerId);
+		}
+	};
+
+	requestAnimationFrame(animate);
 };
 
 // Segment colors for the wheel

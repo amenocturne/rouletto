@@ -299,8 +299,10 @@ const showJoinScreen = (): void => {
 			<div class="game-layout">
 				<div class="game-left">
 					<div class="wheel-title">Spin to Win</div>
-					<div id="wheel-container"></div>
-					<div id="action-controls"></div>
+					<div class="wheel-row">
+						<div id="action-controls"></div>
+						<div id="wheel-container"></div>
+					</div>
 				</div>
 				<div class="game-right">
 					<div class="panel-header">
@@ -562,57 +564,86 @@ const renderActionControls = (): void => {
 	const container = document.getElementById("action-controls");
 	if (!container || !currentState) return;
 
-	container.innerHTML = "";
+	if (!isAdmin) {
+		container.innerHTML = "";
+		return;
+	}
 
-	if (!isAdmin) return;
-
+	// Show start betting button only in waiting phase
 	if (currentState.phase === "waiting" && currentState.candidates.length > 0) {
+		container.innerHTML = "";
 		const btn = document.createElement("button");
 		btn.className = "host-btn";
 		btn.textContent = "Start Betting";
 		btn.addEventListener("click", () => send({ type: "startBetting" }));
 		container.appendChild(btn);
+		return;
 	}
 
-	if (currentState.phase === "betting") {
-		// Create slot machine lever instead of button
-		const lever = document.createElement("div");
-		lever.className = "lever-container";
-		lever.innerHTML = `
-			<div class="lever-slot">
-				<div class="lever-track"></div>
-				<div class="lever-handle" id="lever-handle">
-					<div class="lever-ball"></div>
-					<div class="lever-stick"></div>
+	// Show lever during betting, spinning, and result phases
+	if (currentState.phase === "betting" || currentState.phase === "spinning" || currentState.phase === "result") {
+		const isInteractive = currentState.phase === "betting";
+		const isPulled = currentState.phase === "spinning" || currentState.phase === "result";
+
+		// Check if lever already exists - preserve it to avoid visual flash
+		let leverContainer = container.querySelector(".lever-container") as HTMLElement | null;
+		let handle = document.getElementById("lever-handle");
+
+		if (leverContainer && handle) {
+			// Update existing lever classes
+			if (isInteractive) {
+				leverContainer.classList.remove("disabled");
+			} else {
+				leverContainer.classList.add("disabled");
+			}
+
+			if (isPulled) {
+				handle.classList.add("pulled");
+			}
+
+			// Update label
+			const label = leverContainer.querySelector(".lever-label");
+			if (label) {
+				label.textContent = isInteractive ? "Pull to Spin" : "";
+			}
+		} else {
+			// Create new lever
+			container.innerHTML = "";
+			const lever = document.createElement("div");
+			lever.className = `lever-container${isInteractive ? "" : " disabled"}`;
+			lever.innerHTML = `
+				<div class="lever-slot">
+					<div class="lever-track"></div>
+					<div class="lever-handle${isPulled ? " pulled" : ""}" id="lever-handle">
+						<div class="lever-ball"></div>
+						<div class="lever-stick"></div>
+					</div>
 				</div>
-			</div>
-			<div class="lever-label">Pull to Spin</div>
-		`;
+				<div class="lever-label">${isInteractive ? "Pull to Spin" : ""}</div>
+			`;
 
-		lever.onclick = () => {
-			const handle = document.getElementById("lever-handle");
-			if (!handle || handle.classList.contains("pulled")) return;
+			if (isInteractive) {
+				lever.onclick = () => {
+					const handle = document.getElementById("lever-handle");
+					if (!handle || handle.classList.contains("pulled")) return;
 
-			// Pull down
-			handle.classList.add("pulled");
+					// Pull down and stay down
+					handle.classList.add("pulled");
 
-			// Release and spring back after delay
-			setTimeout(() => {
-				handle.classList.remove("pulled");
-				handle.classList.add("released");
+					// Send spin message after pull animation
+					setTimeout(() => {
+						send({ type: "spin" });
+					}, 300);
+				};
+			}
 
-				// Send spin message
-				send({ type: "spin" });
-
-				// Clean up animation class
-				setTimeout(() => {
-					handle.classList.remove("released");
-				}, 400);
-			}, 300);
-		};
-
-		container.appendChild(lever);
+			container.appendChild(lever);
+		}
+		return;
 	}
+
+	// Clear for other phases (waiting with no candidates)
+	container.innerHTML = "";
 };
 
 // Easing function for smooth deceleration

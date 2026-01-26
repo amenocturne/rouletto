@@ -1,13 +1,7 @@
 import * as PIXI from "pixi.js";
 import { CRTFilter, GlowFilter } from "pixi-filters";
 import type { Candidate, ClientMessage, GameState, ServerMessage } from "../shared/types";
-import {
-	loadCardsTexture,
-	createCardSprite,
-	Suit,
-	Rank,
-	getCardDimensions,
-} from "./cards";
+import { loadCardsTexture, createCardSprite, Suit, Rank, getCardDimensions } from "./cards";
 
 // State management
 let currentState: GameState | null = null;
@@ -574,11 +568,9 @@ const renderCandidatesList = (): void => {
 
 	// Show message if no players at all
 	if (currentState.candidates.length === 0 && pureSpectators.length === 0) {
-		container.innerHTML =
-			'<p class="no-candidates">No players yet. Admin can add names above.</p>';
+		container.innerHTML = '<p class="no-candidates">No players yet. Admin can add names above.</p>';
 	}
 };
-
 
 // Render action controls (start betting, spin lever)
 const renderActionControls = (): void => {
@@ -602,7 +594,11 @@ const renderActionControls = (): void => {
 	}
 
 	// Show lever during betting, spinning, and result phases
-	if (currentState.phase === "betting" || currentState.phase === "spinning" || currentState.phase === "result") {
+	if (
+		currentState.phase === "betting" ||
+		currentState.phase === "spinning" ||
+		currentState.phase === "result"
+	) {
 		const isInteractive = currentState.phase === "betting";
 		const isPulled = currentState.phase === "spinning" || currentState.phase === "result";
 
@@ -1145,20 +1141,29 @@ const createCRTOverlay = (): void => {
 	document.body.appendChild(crt);
 };
 
+// Card border state for hover effects
+interface CardState {
+	sprite: PIXI.Sprite;
+	originalX: number;
+	originalY: number;
+}
+let borderCards: CardState[] = [];
+let borderCardsApp: PIXI.Application | null = null;
+
 // Create scattered card border around the screen
 const createCardBorder = async (): Promise<void> => {
-	const pixiTestApp = new PIXI.Application();
-	await pixiTestApp.init({
+	borderCardsApp = new PIXI.Application();
+	await borderCardsApp.init({
 		width: window.innerWidth,
 		height: window.innerHeight,
 		backgroundAlpha: 0,
 	});
-	pixiTestApp.canvas.style.position = "fixed";
-	pixiTestApp.canvas.style.top = "0";
-	pixiTestApp.canvas.style.left = "0";
-	pixiTestApp.canvas.style.pointerEvents = "none";
-	pixiTestApp.canvas.style.zIndex = "-1";
-	document.body.appendChild(pixiTestApp.canvas);
+	borderCardsApp.canvas.style.position = "fixed";
+	borderCardsApp.canvas.style.top = "0";
+	borderCardsApp.canvas.style.left = "0";
+	borderCardsApp.canvas.style.pointerEvents = "none";
+	borderCardsApp.canvas.style.zIndex = "-1";
+	document.body.appendChild(borderCardsApp.canvas);
 
 	await loadCardsTexture();
 	const cardDims = getCardDimensions();
@@ -1169,15 +1174,37 @@ const createCardBorder = async (): Promise<void> => {
 	// All suits and ranks for variety
 	const suits = [Suit.HEARTS, Suit.SPADES, Suit.DIAMONDS, Suit.CLUBS];
 	const ranks = [
-		Rank.TWO, Rank.THREE, Rank.FOUR, Rank.FIVE, Rank.SIX,
-		Rank.SEVEN, Rank.EIGHT, Rank.NINE, Rank.TEN,
-		Rank.JACK, Rank.QUEEN, Rank.KING, Rank.ACE,
+		Rank.TWO,
+		Rank.THREE,
+		Rank.FOUR,
+		Rank.FIVE,
+		Rank.SIX,
+		Rank.SEVEN,
+		Rank.EIGHT,
+		Rank.NINE,
+		Rank.TEN,
+		Rank.JACK,
+		Rank.QUEEN,
+		Rank.KING,
+		Rank.ACE,
 	];
 
 	const getRandomCard = () => {
 		const suit = suits[Math.floor(Math.random() * suits.length)];
 		const rank = ranks[Math.floor(Math.random() * ranks.length)];
 		return createCardSprite(suit, rank);
+	};
+
+	// Helper to add a card and track its original position
+	const addCard = (x: number, y: number, rotation: number): void => {
+		const card = getRandomCard();
+		card.anchor.set(0.5);
+		card.scale.set(scale);
+		card.x = x;
+		card.y = y;
+		card.rotation = rotation;
+		borderCardsApp?.stage.addChild(card);
+		borderCards.push({ sprite: card, originalX: x, originalY: y });
 	};
 
 	// Generate cards along edges - keep them tight to edges
@@ -1187,47 +1214,68 @@ const createCardBorder = async (): Promise<void> => {
 
 	// Top edge - cards peek from top
 	for (let x = -cardWidth / 2; x < w + cardWidth / 2; x += cardWidth * overlap) {
-		const card = getRandomCard();
-		card.anchor.set(0.5);
-		card.scale.set(scale);
-		card.x = x + (Math.random() - 0.5) * 30;
-		card.y = cardHeight * 0.2 + (Math.random() - 0.5) * 20;
-		card.rotation = (Math.random() - 0.5) * 0.6;
-		pixiTestApp.stage.addChild(card);
+		const posX = x + (Math.random() - 0.5) * 30;
+		const posY = cardHeight * 0.2 + (Math.random() - 0.5) * 20;
+		const rotation = (Math.random() - 0.5) * 0.6;
+		addCard(posX, posY, rotation);
 	}
 
 	// Bottom edge - cards peek from bottom
 	for (let x = -cardWidth / 2; x < w + cardWidth / 2; x += cardWidth * overlap) {
-		const card = getRandomCard();
-		card.anchor.set(0.5);
-		card.scale.set(scale);
-		card.x = x + (Math.random() - 0.5) * 30;
-		card.y = h - cardHeight * 0.2 + (Math.random() - 0.5) * 20;
-		card.rotation = (Math.random() - 0.5) * 0.6;
-		pixiTestApp.stage.addChild(card);
+		const posX = x + (Math.random() - 0.5) * 30;
+		const posY = h - cardHeight * 0.2 + (Math.random() - 0.5) * 20;
+		const rotation = (Math.random() - 0.5) * 0.6;
+		addCard(posX, posY, rotation);
 	}
 
 	// Left edge - cards peek from left
 	for (let y = cardHeight / 2; y < h - cardHeight / 2; y += cardHeight * overlap) {
-		const card = getRandomCard();
-		card.anchor.set(0.5);
-		card.scale.set(scale);
-		card.x = cardWidth * 0.2 + (Math.random() - 0.5) * 20;
-		card.y = y + (Math.random() - 0.5) * 30;
-		card.rotation = (Math.random() - 0.5) * 0.6;
-		pixiTestApp.stage.addChild(card);
+		const posX = cardWidth * 0.2 + (Math.random() - 0.5) * 20;
+		const posY = y + (Math.random() - 0.5) * 30;
+		const rotation = (Math.random() - 0.5) * 0.6;
+		addCard(posX, posY, rotation);
 	}
 
 	// Right edge - cards peek from right
 	for (let y = cardHeight / 2; y < h - cardHeight / 2; y += cardHeight * overlap) {
-		const card = getRandomCard();
-		card.anchor.set(0.5);
-		card.scale.set(scale);
-		card.x = w - cardWidth * 0.2 + (Math.random() - 0.5) * 20;
-		card.y = y + (Math.random() - 0.5) * 30;
-		card.rotation = (Math.random() - 0.5) * 0.6;
-		pixiTestApp.stage.addChild(card);
+		const posX = w - cardWidth * 0.2 + (Math.random() - 0.5) * 20;
+		const posY = y + (Math.random() - 0.5) * 30;
+		const rotation = (Math.random() - 0.5) * 0.6;
+		addCard(posX, posY, rotation);
 	}
+
+	// Add hover effect - cards move away from mouse when nearby
+	const hoverRadius = 220; // Distance at which cards start reacting
+	const maxDisplacement = 25; // Maximum pixels to move
+
+	document.addEventListener("mousemove", (e) => {
+		const mouseX = e.clientX;
+		const mouseY = e.clientY;
+
+		for (const cardState of borderCards) {
+			const dx = cardState.originalX - mouseX;
+			const dy = cardState.originalY - mouseY;
+			const distance = Math.sqrt(dx * dx + dy * dy);
+
+			if (distance < hoverRadius && distance > 0) {
+				// Calculate displacement - stronger when closer
+				const strength = 1 - distance / hoverRadius;
+				const displacement = maxDisplacement * strength;
+
+				// Move away from mouse (normalize direction and scale by displacement)
+				const targetX = cardState.originalX + (dx / distance) * displacement;
+				const targetY = cardState.originalY + (dy / distance) * displacement;
+
+				// Smooth lerp toward target
+				cardState.sprite.x += (targetX - cardState.sprite.x) * 0.3;
+				cardState.sprite.y += (targetY - cardState.sprite.y) * 0.3;
+			} else {
+				// Smoothly return to original position
+				cardState.sprite.x += (cardState.originalX - cardState.sprite.x) * 0.1;
+				cardState.sprite.y += (cardState.originalY - cardState.sprite.y) * 0.1;
+			}
+		}
+	});
 };
 
 // Hide loading overlay with fade animation

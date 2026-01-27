@@ -3,6 +3,9 @@ import { GlowFilter } from "pixi-filters";
 import type { Candidate, ClientMessage, GameState, ServerMessage } from "../shared/types";
 import { loadCardsTexture, createCardSprite, Suit, Rank, getCardDimensions } from "./cards";
 
+// Detect base path - /rouletto in production (behind Caddy), empty locally
+const BASE_PATH = window.location.pathname.startsWith("/rouletto") ? "/rouletto" : "";
+
 // State management
 let currentState: GameState | null = null;
 let mySpectatorId: string | null = null;
@@ -124,9 +127,10 @@ const playRevealSound = (): void => {
 // WebSocket connection
 const connect = (roomIdParam?: string): void => {
 	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+	const wsPath = BASE_PATH || "/";
 	const wsUrl = roomIdParam
-		? `${protocol}//${window.location.host}/rouletto?room=${roomIdParam}`
-		: `${protocol}//${window.location.host}/rouletto`;
+		? `${protocol}//${window.location.host}${wsPath}?room=${roomIdParam}`
+		: `${protocol}//${window.location.host}${wsPath}`;
 
 	ws = new WebSocket(wsUrl);
 
@@ -180,7 +184,7 @@ const handleServerMessage = (message: ServerMessage): void => {
 		case "roomCreated":
 			roomId = message.roomId;
 			// Update URL without reload
-			window.history.pushState({}, "", `/rouletto/room/${roomId}`);
+			window.history.pushState({}, "", `${BASE_PATH}/room/${roomId}`);
 			// Show join screen to enter name
 			showJoinScreen();
 			break;
@@ -233,7 +237,7 @@ const showRoomError = (_errorMessage: string): void => {
 	const goHomeBtn = document.getElementById("go-home-btn") as HTMLButtonElement | null;
 	if (goHomeBtn) {
 		goHomeBtn.onclick = () => {
-			window.history.pushState({}, "", "/rouletto/");
+			window.history.pushState({}, "", `${BASE_PATH}/`);
 			showLandingPage();
 		};
 		goHomeBtn.focus();
@@ -1502,7 +1506,7 @@ const init = async (): Promise<void> => {
 	createCRTOverlay();
 
 	const path = window.location.pathname;
-	const roomMatch = path.match(/^\/rouletto\/room\/([a-z0-9]+)$/i);
+	const roomMatch = path.match(/^(?:\/rouletto)?\/room\/([a-z0-9]+)$/i);
 
 	if (roomMatch) {
 		// We're in a room - connect and show join screen

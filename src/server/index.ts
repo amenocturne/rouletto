@@ -503,13 +503,14 @@ const server = Bun.serve<WebSocketData>({
 		}
 
 		// Serve static files
-		// Landing page
-		if (pathname === "/" || pathname === "/index.html") {
+		// Landing page (support both with and without /rouletto prefix for local dev)
+		if (pathname === "/" || pathname === "/index.html" || pathname === "/rouletto" || pathname === "/rouletto/" || pathname === "/rouletto/index.html") {
 			return serveFile("src/client/index.html", "src/client");
 		}
 
 		// Room pages - serve the same HTML, client detects room from URL
-		const roomMatch = pathname.match(/^\/room\/([a-z0-9]+)$/i);
+		// Support both /room/xxx and /rouletto/room/xxx
+		const roomMatch = pathname.match(/^(?:\/rouletto)?\/room\/([a-z0-9]+)$/i);
 		if (roomMatch) {
 			return serveFile("src/client/index.html", "src/client");
 		}

@@ -123,9 +123,10 @@ const playRevealSound = (): void => {
 
 // WebSocket connection
 const connect = (roomIdParam?: string): void => {
+	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 	const wsUrl = roomIdParam
-		? `ws://${window.location.host}?room=${roomIdParam}`
-		: `ws://${window.location.host}`;
+		? `${protocol}//${window.location.host}/rouletto?room=${roomIdParam}`
+		: `${protocol}//${window.location.host}/rouletto`;
 
 	ws = new WebSocket(wsUrl);
 
@@ -179,7 +180,7 @@ const handleServerMessage = (message: ServerMessage): void => {
 		case "roomCreated":
 			roomId = message.roomId;
 			// Update URL without reload
-			window.history.pushState({}, "", `/room/${roomId}`);
+			window.history.pushState({}, "", `/rouletto/room/${roomId}`);
 			// Show join screen to enter name
 			showJoinScreen();
 			break;
@@ -232,7 +233,7 @@ const showRoomError = (_errorMessage: string): void => {
 	const goHomeBtn = document.getElementById("go-home-btn") as HTMLButtonElement | null;
 	if (goHomeBtn) {
 		goHomeBtn.onclick = () => {
-			window.history.pushState({}, "", "/");
+			window.history.pushState({}, "", "/rouletto/");
 			showLandingPage();
 		};
 		goHomeBtn.focus();
@@ -266,7 +267,7 @@ const showLandingPage = (): void => {
 
 	app.innerHTML = `
 		<div id="landing-screen" class="screen">
-			<h1>Casino Wheel</h1>
+			<h1>Rouletto</h1>
 			<button id="create-room-btn" class="host-btn">Create New Room</button>
 		</div>
 	`;
@@ -310,7 +311,7 @@ const showJoinScreen = (): void => {
 
 	app.innerHTML = `
 		<div id="join-screen" class="screen">
-			<h1>Casino Wheel</h1>
+			<h1>Rouletto</h1>
 			${shareSection}
 			<form id="join-form">
 				<div class="form-title">Enter the Game</div>
@@ -1501,7 +1502,7 @@ const init = async (): Promise<void> => {
 	createCRTOverlay();
 
 	const path = window.location.pathname;
-	const roomMatch = path.match(/^\/room\/([a-z0-9]+)$/i);
+	const roomMatch = path.match(/^\/rouletto\/room\/([a-z0-9]+)$/i);
 
 	if (roomMatch) {
 		// We're in a room - connect and show join screen

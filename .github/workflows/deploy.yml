@@ -1,0 +1,34 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t rouletto:latest .
+
+      - name: Save and transfer image
+        run: |
+          docker save rouletto:latest | gzip > rouletto.tar.gz
+
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.DEPLOY_SERVER_IP }} >> ~/.ssh/known_hosts
+
+          scp rouletto.tar.gz deployer@${{ secrets.DEPLOY_SERVER_IP }}:/tmp/
+
+          ssh deployer@${{ secrets.DEPLOY_SERVER_IP }} '
+            docker load < /tmp/rouletto.tar.gz
+            docker stop rouletto || true
+            docker rm rouletto || true
+            docker run -d --name rouletto --restart unless-stopped -p 8003:3000 rouletto:latest
+            rm /tmp/rouletto.tar.gz
+          '

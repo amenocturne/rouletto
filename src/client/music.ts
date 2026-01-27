@@ -74,11 +74,14 @@ export const createCrossfadeLoop = async (
 		const delayMs = (nextStart - ctx.currentTime) * 1000;
 
 		if (delayMs > 0 && playing) {
-			nextScheduleTimeout = setTimeout(() => {
-				if (playing) {
-					scheduleSource(nextStart);
-				}
-			}, Math.max(0, delayMs - 100)); // Schedule slightly early to avoid gaps
+			nextScheduleTimeout = setTimeout(
+				() => {
+					if (playing) {
+						scheduleSource(nextStart);
+					}
+				},
+				Math.max(0, delayMs - 100),
+			); // Schedule slightly early to avoid gaps
 		}
 	};
 

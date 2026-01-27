@@ -1468,9 +1468,7 @@ button.loading::after {
 #wheel-container canvas {
 	/* No border-radius - wheel is drawn as circle, text can extend beyond */
 	/* Use drop-shadow filter instead of box-shadow to follow actual wheel shape */
-	filter:
-		drop-shadow(0 0 30px rgba(255, 215, 0, 0.3))
-		drop-shadow(0 0 60px rgba(0, 0, 0, 0.4));
+	filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.3)) drop-shadow(0 0 60px rgba(0, 0, 0, 0.4));
 	/* Scale wheel based on viewport - account for 200px body padding, title, and sidebar */
 	max-width: min(500px, calc(100vw - 600px), calc(100vh - 450px));
 	max-height: min(500px, calc(100vw - 600px), calc(100vh - 450px));
@@ -1744,7 +1742,6 @@ button.loading::after {
 	.add-candidate-row::after {
 		inset: 6px -6px -6px 6px;
 	}
-
 }
 
 @media (max-width: 600px) {
@@ -2469,4 +2466,68 @@ button.loading::after {
 	color: var(--cream);
 	width: 35px;
 	text-align: right;
+}
+
+/* Music Toast Notification */
+.music-toast {
+	position: fixed;
+	bottom: 1.5rem;
+	right: 1.5rem;
+	transform: translateX(calc(100% + 2rem));
+	background: linear-gradient(180deg, var(--wood-medium) 0%, var(--wood-dark) 100%);
+	border: 3px solid var(--brass);
+	border-radius: 8px;
+	padding: 0.75rem 1rem;
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	box-shadow:
+		0 8px 24px rgba(0, 0, 0, 0.5),
+		0 0 20px rgba(255, 215, 0, 0.2);
+	z-index: 1000;
+	transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.music-toast.show {
+	transform: translateX(0);
+}
+
+.music-toast.hide {
+	transform: translateX(calc(100% + 2rem));
+}
+
+.music-toast-text {
+	font-family: var(--font-body);
+	font-size: 0.9rem;
+	color: var(--ivory);
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.music-toast-text span {
+	font-size: 1.2rem;
+}
+
+.music-toast-mute {
+	padding: 0.4rem 0.75rem;
+	font-size: 0.7rem;
+	font-family: var(--font-display);
+	background: linear-gradient(180deg, var(--leather-red) 0%, var(--leather-dark) 100%);
+	border: 2px solid var(--brass);
+	border-radius: 4px;
+	color: var(--ivory);
+	cursor: pointer;
+	transition: all 0.15s ease;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.music-toast-mute:hover {
+	background: linear-gradient(180deg, #8b3a3a 0%, var(--leather-red) 100%);
+	border-color: var(--gold);
+}
+
+.music-toast-mute:active {
+	transform: scale(0.95);
 }

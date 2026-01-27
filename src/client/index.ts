@@ -88,6 +88,53 @@ const initAudio = (): void => {
 	}
 };
 
+// Show toast notification when music starts
+const showMusicToast = (): void => {
+	// Don't show if already exists
+	if (document.getElementById("music-toast")) return;
+
+	const toast = document.createElement("div");
+	toast.id = "music-toast";
+	toast.className = "music-toast";
+	toast.innerHTML = `
+		<div class="music-toast-text">
+			<span>🎵</span> Music playing
+		</div>
+		<button class="music-toast-mute">Mute</button>
+	`;
+
+	document.body.appendChild(toast);
+
+	// Trigger animation
+	requestAnimationFrame(() => {
+		toast.classList.add("show");
+	});
+
+	// Handle mute button
+	const muteBtn = toast.querySelector(".music-toast-mute") as HTMLButtonElement;
+	muteBtn.onclick = () => {
+		musicVolume = 0;
+		applyVolume();
+		saveVolumeSettings();
+		// Update the settings panel slider if open
+		const musicSlider = document.getElementById("music-volume") as HTMLInputElement | null;
+		const musicValue = document.getElementById("music-volume-value");
+		if (musicSlider) musicSlider.value = "0";
+		if (musicValue) musicValue.textContent = "0%";
+		// Hide toast
+		hideToast();
+	};
+
+	// Auto-hide after 4 seconds
+	const hideToast = (): void => {
+		toast.classList.remove("show");
+		toast.classList.add("hide");
+		setTimeout(() => toast.remove(), 300);
+	};
+
+	setTimeout(hideToast, 4000);
+};
+
 const enableAudio = (): void => {
 	if (audioEnabled) return;
 
@@ -111,13 +158,12 @@ const enableAudio = (): void => {
 
 			// Initialize and start background music
 			// Loop point at 3:58.035 = 238.035 seconds, with 2 second crossfade
-			backgroundMusic = await createCrossfadeLoop(
-				"/rouletto/sounds/music.wav",
-				238.035,
-				2,
-			);
+			backgroundMusic = await createCrossfadeLoop("/rouletto/sounds/music.wav", 238.035, 2);
 			backgroundMusic.setVolume(musicVolume);
 			backgroundMusic.play();
+
+			// Show toast notification
+			showMusicToast();
 		} catch (e) {
 			console.error("Failed to initialize audio:", e);
 		}

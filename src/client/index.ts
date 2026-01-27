@@ -24,6 +24,7 @@ let isSpinning = false;
 let wheelGlowFilter: GlowFilter | null = null;
 let glowTickerCallback: (() => void) | null = null;
 let lastCandidatesJson: string = ""; // Cache to avoid redrawing wheel unnecessarily
+let lastCandidatesListJson: string = ""; // Cache to avoid rebuilding candidates list DOM
 
 // Audio state
 let spinSound: HTMLAudioElement | null = null;
@@ -249,6 +250,7 @@ const resetPixiState = (): void => {
 	glowTickerCallback = null;
 	isPixiInitializing = false;
 	lastCandidatesJson = "";
+	lastCandidatesListJson = "";
 	currentState = null;
 	mySpectatorId = null;
 	isAdmin = false;
@@ -403,17 +405,30 @@ const escapeHtml = (text: string): string => {
 	return div.innerHTML;
 };
 
-// Add mouse tracking for 3D tilt effect (Balatro-style)
+// Add mouse tracking for 3D tilt effect (Balatro-style) - RAF throttled
 const addTiltEffect = (element: HTMLElement): void => {
+	let rafPending = false;
+	let lastX = 0;
+	let lastY = 0;
+
 	element.addEventListener("mousemove", (e) => {
-		const rect = element.getBoundingClientRect();
-		const x = e.clientX - rect.left;
-		const y = e.clientY - rect.top;
-		const centerX = rect.width / 2;
-		const centerY = rect.height / 2;
-		const rotateX = (y - centerY) / 20;
-		const rotateY = (centerX - x) / 20;
-		element.style.transform = `perspective(500px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-4px)`;
+		lastX = e.clientX;
+		lastY = e.clientY;
+
+		if (rafPending) return;
+		rafPending = true;
+
+		requestAnimationFrame(() => {
+			rafPending = false;
+			const rect = element.getBoundingClientRect();
+			const x = lastX - rect.left;
+			const y = lastY - rect.top;
+			const centerX = rect.width / 2;
+			const centerY = rect.height / 2;
+			const rotateX = (y - centerY) / 20;
+			const rotateY = (centerX - x) / 20;
+			element.style.transform = `perspective(500px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-4px)`;
+		});
 	});
 
 	element.addEventListener("mouseleave", () => {
@@ -426,9 +441,19 @@ const renderAdminControls = (): void => {
 	const container = document.getElementById("admin-controls");
 	if (!container || !currentState) return;
 
-	container.innerHTML = "";
+	// Only rebuild if phase or admin status changed
+	const shouldShowControls = isAdmin && currentState.phase === "waiting";
+	const currentlyShowing = container.innerHTML !== "";
 
-	if (!isAdmin || currentState.phase !== "waiting") {
+	if (!shouldShowControls) {
+		if (currentlyShowing) {
+			container.innerHTML = "";
+		}
+		return;
+	}
+
+	// Skip rebuild if controls already exist (preserves input focus/value)
+	if (currentlyShowing && !shouldFocusCandidateInput) {
 		return;
 	}
 
@@ -502,6 +527,21 @@ const renderBettingChips = (candidateId: string): string => {
 const renderCandidatesList = (): void => {
 	const container = document.getElementById("candidates-list");
 	if (!container || !currentState) return;
+
+	// Build a cache key that includes all data affecting the render
+	const cacheKey = JSON.stringify({
+		candidates: currentState.candidates,
+		spectators: currentState.spectators.map((s) => ({ id: s.id, name: s.name, bet: s.bet })),
+		phase: currentState.phase,
+		isAdmin,
+		mySpectatorId,
+	});
+
+	// Skip rebuild if nothing changed
+	if (cacheKey === lastCandidatesListJson) {
+		return;
+	}
+	lastCandidatesListJson = cacheKey;
 
 	container.innerHTML = "";
 

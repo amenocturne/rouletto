@@ -1217,6 +1217,8 @@ button.loading::after {
 		transform 0.15s ease,
 		box-shadow 0.15s ease,
 		border-color 0.15s ease;
+	/* GPU acceleration for tilt effect */
+	will-change: transform;
 }
 
 /* Inner decorative border like a playing card */
@@ -1440,6 +1442,9 @@ button.loading::after {
 	margin-bottom: 1rem;
 	/* Offset to center over wheel, not lever+wheel */
 	margin-left: 100px;
+	/* GPU acceleration hints */
+	will-change: transform;
+	transform: translateZ(0);
 }
 
 @keyframes titlePulse {

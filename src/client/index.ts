@@ -1499,8 +1499,9 @@ const init = async (): Promise<void> => {
 	await createCardBorder();
 
 	loadVolumeSettings();
-	initAudio();
-	enableAudio();
+	// TODO: Enable when sound files are added
+	// initAudio();
+	// enableAudio();
 	renderSettingsPanel();
 	createCRTOverlay();
 

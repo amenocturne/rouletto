@@ -727,6 +727,14 @@ const spinWheel = (winnerId: string): void => {
 	if (!wheelContainer || !currentState || isSpinning) return;
 	isSpinning = true;
 
+	// Enable glow filter and start ticker during spin
+	if (wheelGlowFilter) {
+		wheelContainer.filters = [wheelGlowFilter];
+	}
+	if (pixiApp) {
+		pixiApp.ticker.start();
+	}
+
 	const candidates = currentState.candidates;
 	const winnerIndex = candidates.findIndex((c) => c.id === winnerId);
 	if (winnerIndex === -1) {
@@ -948,7 +956,7 @@ const initPixi = async (): Promise<void> => {
 	wheelContainer.y = 300;
 	pixiApp.stage.addChild(wheelContainer);
 
-	// Add glow filter to wheel container
+	// Add glow filter to wheel container (disabled initially for performance)
 	wheelGlowFilter = new GlowFilter({
 		distance: 15,
 		outerStrength: 1.5,
@@ -956,10 +964,16 @@ const initPixi = async (): Promise<void> => {
 		color: 0x00ff88,
 		quality: 0.3,
 	});
-	wheelContainer.filters = [wheelGlowFilter];
+	// Only enable glow during spin/result - filter runs every frame and is expensive
+	wheelContainer.filters = [];
 
 	// Draw pointer/arrow at top (fixed, doesn't rotate)
 	drawPointer();
+
+	// Stop ticker when wheel is static - only start during spin/glow animation
+	pixiApp.ticker.stop();
+	// Render once to show initial state
+	pixiApp.render();
 };
 
 // Render results overlay with flying card animation
@@ -1064,6 +1078,10 @@ const render = (): void => {
 	if (candidatesJson !== lastCandidatesJson) {
 		lastCandidatesJson = candidatesJson;
 		drawWheel(currentState.candidates);
+		// Manual render since ticker is stopped when wheel is static
+		if (pixiApp && !pixiApp.ticker.started) {
+			pixiApp.render();
+		}
 	}
 
 	// Show game screen
@@ -1076,13 +1094,18 @@ const render = (): void => {
 		adminBadge.classList.toggle("hidden", !isAdmin);
 	}
 
-	// If phase is waiting, reset glow to normal
-	if (currentState.phase === "waiting" && wheelGlowFilter && pixiApp) {
+	// If phase is waiting, reset glow and disable filter for performance
+	if (currentState.phase === "waiting" && wheelGlowFilter && pixiApp && wheelContainer) {
 		if (glowTickerCallback) {
 			pixiApp.ticker.remove(glowTickerCallback);
 			glowTickerCallback = null;
 		}
 		wheelGlowFilter.outerStrength = 1.5;
+		// Disable glow filter when not needed (expensive shader)
+		wheelContainer.filters = [];
+		// Stop ticker when wheel is static
+		pixiApp.ticker.stop();
+		pixiApp.render();
 	}
 
 	renderAdminControls();
@@ -1312,16 +1335,17 @@ const createCardBorder = async (): Promise<void> => {
 	// Add hover effect - cards move away from mouse when nearby
 	const hoverRadius = 220; // Distance at which cards start reacting
 	const maxDisplacement = 25; // Maximum pixels to move
-	const movementThreshold = 0.5; // Minimum movement to be considered "moving"
+
+	// Track displaced cards for efficient return-to-origin updates
+	const displacedCards = new Set<CardState>();
 
 	// RAF-throttled mouse tracking
 	let mouseX = 0;
 	let mouseY = 0;
 	let rafScheduled = false;
-	let isAnimating = false;
 
 	const updateCardPositions = (): void => {
-		let anyCardMoving = false;
+		rafScheduled = false;
 
 		// Get cards from nearby cells only (spatial partitioning optimization)
 		const nearbyKeys = getNearbyCells(mouseX, mouseY, hoverRadius + maxDisplacement);
@@ -1336,7 +1360,7 @@ const createCardBorder = async (): Promise<void> => {
 			}
 		}
 
-		// Update nearby cards (attraction toward mouse displacement)
+		// Update nearby cards (move away from mouse)
 		for (const cardState of nearbyCards) {
 			const dx = cardState.originalX - mouseX;
 			const dy = cardState.originalY - mouseY;
@@ -1347,63 +1371,44 @@ const createCardBorder = async (): Promise<void> => {
 				const strength = 1 - distance / hoverRadius;
 				const displacement = maxDisplacement * strength;
 
-				// Move away from mouse (normalize direction and scale by displacement)
+				// Move away from mouse
 				const targetX = cardState.originalX + (dx / distance) * displacement;
 				const targetY = cardState.originalY + (dy / distance) * displacement;
 
 				// Smooth lerp toward target
 				cardState.sprite.x += (targetX - cardState.sprite.x) * 0.3;
 				cardState.sprite.y += (targetY - cardState.sprite.y) * 0.3;
+
+				// Track as displaced
+				displacedCards.add(cardState);
 			} else {
-				// Smoothly return to original position
+				// Return to original position
 				cardState.sprite.x += (cardState.originalX - cardState.sprite.x) * 0.1;
 				cardState.sprite.y += (cardState.originalY - cardState.sprite.y) * 0.1;
-			}
 
-			// Check if card is still moving
-			if (
-				Math.abs(cardState.sprite.x - cardState.originalX) > movementThreshold ||
-				Math.abs(cardState.sprite.y - cardState.originalY) > movementThreshold
-			) {
-				anyCardMoving = true;
-			}
-		}
-
-		// Update all cards that are displaced but NOT near mouse (return to origin)
-		for (const cardState of borderCards) {
-			if (!nearbyCards.has(cardState)) {
-				// Only update if not at original position
-				const dxFromOrigin = cardState.originalX - cardState.sprite.x;
-				const dyFromOrigin = cardState.originalY - cardState.sprite.y;
+				// Remove from displaced if settled
 				if (
-					Math.abs(dxFromOrigin) > movementThreshold ||
-					Math.abs(dyFromOrigin) > movementThreshold
+					Math.abs(cardState.sprite.x - cardState.originalX) < 0.5 &&
+					Math.abs(cardState.sprite.y - cardState.originalY) < 0.5
 				) {
-					cardState.sprite.x += dxFromOrigin * 0.1;
-					cardState.sprite.y += dyFromOrigin * 0.1;
-					anyCardMoving = true;
+					displacedCards.delete(cardState);
 				}
 			}
 		}
 
-		rafScheduled = false;
+		// Return displaced cards that are no longer near mouse to origin
+		for (const cardState of displacedCards) {
+			if (!nearbyCards.has(cardState)) {
+				cardState.sprite.x += (cardState.originalX - cardState.sprite.x) * 0.1;
+				cardState.sprite.y += (cardState.originalY - cardState.sprite.y) * 0.1;
 
-		// Control ticker based on movement (render-on-demand)
-		if (borderCardsApp) {
-			if (anyCardMoving) {
-				isAnimating = true;
-				if (!borderCardsApp.ticker.started) {
-					borderCardsApp.ticker.start();
+				// Remove from displaced if settled
+				if (
+					Math.abs(cardState.sprite.x - cardState.originalX) < 0.5 &&
+					Math.abs(cardState.sprite.y - cardState.originalY) < 0.5
+				) {
+					displacedCards.delete(cardState);
 				}
-				// Schedule next update to continue animation
-				if (!rafScheduled) {
-					rafScheduled = true;
-					requestAnimationFrame(updateCardPositions);
-				}
-			} else if (isAnimating) {
-				// Cards have settled - stop ticker
-				isAnimating = false;
-				borderCardsApp.ticker.stop();
 			}
 		}
 	};
@@ -1414,18 +1419,9 @@ const createCardBorder = async (): Promise<void> => {
 
 		if (!rafScheduled) {
 			rafScheduled = true;
-			// Start ticker if not running (mouse moved, cards may need to react)
-			if (borderCardsApp && !borderCardsApp.ticker.started) {
-				borderCardsApp.ticker.start();
-			}
 			requestAnimationFrame(updateCardPositions);
 		}
-	});
-
-	// Stop ticker initially since nothing is moving
-	if (borderCardsApp) {
-		borderCardsApp.ticker.stop();
-	}
+	})
 };
 
 // Hide loading overlay with fade animation

@@ -128,8 +128,8 @@ const playRevealSound = (): void => {
 const connect = (roomIdParam?: string): void => {
 	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 	const wsUrl = roomIdParam
-		? `${protocol}//${window.location.host}${BASE_PATH}?room=${roomIdParam}`
-		: `${protocol}//${window.location.host}${BASE_PATH}`;
+		? `${protocol}//${window.location.host}${BASE_PATH}/?room=${roomIdParam}`
+		: `${protocol}//${window.location.host}${BASE_PATH}/`;
 
 	ws = new WebSocket(wsUrl);
 

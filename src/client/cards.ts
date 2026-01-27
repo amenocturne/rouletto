@@ -56,7 +56,7 @@ let cardsTexture: PIXI.Texture | null = null;
  */
 export const loadCardsTexture = async (): Promise<PIXI.Texture> => {
 	if (cardsTexture) return cardsTexture;
-	cardsTexture = await PIXI.Assets.load("/public/cards.png");
+	cardsTexture = await PIXI.Assets.load("/rouletto/public/cards.png");
 	return cardsTexture;
 };
 

@@ -232,7 +232,11 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 	}
 
 	// Re-fetch room after potential admin reassignment and use it for the rest
-	const currentRoom = rooms.get(roomId)!;
+	const currentRoom = rooms.get(roomId);
+	if (!currentRoom) {
+		sendRoomError(ws, "Room no longer exists");
+		return;
+	}
 	const isAdmin = spectatorId === currentRoom.adminId;
 
 	// For non-join messages, verify spectator has joined

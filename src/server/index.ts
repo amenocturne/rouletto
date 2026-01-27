@@ -502,46 +502,50 @@ const server = Bun.serve<WebSocketData>({
 			return new Response("WebSocket upgrade failed", { status: 400 });
 		}
 
-		// Serve static files
-		// Landing page (support both with and without /rouletto prefix for local dev)
-		if (pathname === "/" || pathname === "/index.html" || pathname === "/rouletto" || pathname === "/rouletto/" || pathname === "/rouletto/index.html") {
+		// Serve static files - all routes under /rouletto
+		// Landing page
+		if (pathname === "/rouletto" || pathname === "/rouletto/" || pathname === "/rouletto/index.html") {
 			return serveFile("src/client/index.html", "src/client");
 		}
 
 		// Room pages - serve the same HTML, client detects room from URL
-		// Support both /room/xxx and /rouletto/room/xxx
-		const roomMatch = pathname.match(/^(?:\/rouletto)?\/room\/([a-z0-9]+)$/i);
+		const roomMatch = pathname.match(/^\/rouletto\/room\/([a-z0-9]+)$/i);
 		if (roomMatch) {
 			return serveFile("src/client/index.html", "src/client");
 		}
 
 		// Serve CSS from public/
-		if (pathname === "/styles.css") {
+		if (pathname === "/rouletto/styles.css") {
 			return serveFile("public/styles.css", "public");
 		}
 
 		// Serve bundled JS from dist/
-		if (pathname.startsWith("/dist/")) {
-			const filePath = pathname.slice(1); // Remove leading /
+		if (pathname.startsWith("/rouletto/dist/")) {
+			const filePath = pathname.slice("/rouletto/".length);
 			return serveFile(filePath, "dist");
 		}
 
 		// Serve sounds from public/sounds/
-		if (pathname.startsWith("/sounds/")) {
-			const filePath = `public${pathname}`;
+		if (pathname.startsWith("/rouletto/sounds/")) {
+			const filePath = `public${pathname.slice("/rouletto".length)}`;
 			return serveFile(filePath, "public/sounds");
 		}
 
 		// Serve fonts from public/fonts/
-		if (pathname.startsWith("/fonts/")) {
-			const filePath = `public${pathname}`;
+		if (pathname.startsWith("/rouletto/fonts/")) {
+			const filePath = `public${pathname.slice("/rouletto".length)}`;
 			return serveFile(filePath, "public/fonts");
 		}
 
 		// Serve other public files
-		if (pathname.startsWith("/public/")) {
-			const filePath = pathname.slice(1); // Remove leading /
+		if (pathname.startsWith("/rouletto/public/")) {
+			const filePath = pathname.slice("/rouletto/".length);
 			return serveFile(filePath, "public");
+		}
+
+		// Redirect root to /rouletto/
+		if (pathname === "/" || pathname === "") {
+			return Response.redirect(new URL("/rouletto/", req.url).href, 302);
 		}
 
 		// 404 for everything else

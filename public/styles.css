@@ -4,7 +4,7 @@
 	font-style: normal;
 	font-weight: 400;
 	font-display: block;
-	src: url("/fonts/press-start-2p.ttf") format("truetype");
+	src: url("/rouletto/fonts/press-start-2p.ttf") format("truetype");
 }
 
 @font-face {
@@ -12,7 +12,7 @@
 	font-style: normal;
 	font-weight: 400;
 	font-display: block;
-	src: url("/fonts/roboto-400.ttf") format("truetype");
+	src: url("/rouletto/fonts/roboto-400.ttf") format("truetype");
 }
 
 @font-face {
@@ -20,7 +20,7 @@
 	font-style: normal;
 	font-weight: 500;
 	font-display: block;
-	src: url("/fonts/roboto-500.ttf") format("truetype");
+	src: url("/rouletto/fonts/roboto-500.ttf") format("truetype");
 }
 
 :root {

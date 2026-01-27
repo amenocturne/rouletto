@@ -3,8 +3,8 @@ import { GlowFilter } from "pixi-filters";
 import type { Candidate, ClientMessage, GameState, ServerMessage } from "../shared/types";
 import { loadCardsTexture, createCardSprite, Suit, Rank, getCardDimensions } from "./cards";
 
-// Detect base path - /rouletto in production (behind Caddy), empty locally
-const BASE_PATH = window.location.pathname.startsWith("/rouletto") ? "/rouletto" : "";
+// Base path for all routes
+const BASE_PATH = "/rouletto";
 
 // State management
 let currentState: GameState | null = null;
@@ -68,11 +68,11 @@ const applyVolume = (): void => {
 // Audio functions
 const initAudio = (): void => {
 	// Create audio elements
-	spinSound = new Audio("/sounds/spin.mp3");
+	spinSound = new Audio("/rouletto/sounds/spin.mp3");
 	spinSound.loop = true;
 	spinSound.volume = sfxVolume;
 
-	revealSound = new Audio("/sounds/reveal.mp3");
+	revealSound = new Audio("/rouletto/sounds/reveal.mp3");
 	revealSound.volume = sfxVolume;
 
 	// Preload
@@ -127,10 +127,9 @@ const playRevealSound = (): void => {
 // WebSocket connection
 const connect = (roomIdParam?: string): void => {
 	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-	const wsPath = BASE_PATH || "/";
 	const wsUrl = roomIdParam
-		? `${protocol}//${window.location.host}${wsPath}?room=${roomIdParam}`
-		: `${protocol}//${window.location.host}${wsPath}`;
+		? `${protocol}//${window.location.host}${BASE_PATH}?room=${roomIdParam}`
+		: `${protocol}//${window.location.host}${BASE_PATH}`;
 
 	ws = new WebSocket(wsUrl);
 
@@ -1506,7 +1505,7 @@ const init = async (): Promise<void> => {
 	createCRTOverlay();
 
 	const path = window.location.pathname;
-	const roomMatch = path.match(/^(?:\/rouletto)?\/room\/([a-z0-9]+)$/i);
+	const roomMatch = path.match(/^\/rouletto\/room\/([a-z0-9]+)$/i);
 
 	if (roomMatch) {
 		// We're in a room - connect and show join screen

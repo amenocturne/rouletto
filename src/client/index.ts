@@ -1269,10 +1269,12 @@ const createCardBorder = async (): Promise<void> => {
 	const hoverRadius = 220; // Distance at which cards start reacting
 	const maxDisplacement = 25; // Maximum pixels to move
 
-	document.addEventListener("mousemove", (e) => {
-		const mouseX = e.clientX;
-		const mouseY = e.clientY;
+	// RAF-throttled mouse tracking
+	let mouseX = 0;
+	let mouseY = 0;
+	let rafScheduled = false;
 
+	const updateCardPositions = (): void => {
 		for (const cardState of borderCards) {
 			const dx = cardState.originalX - mouseX;
 			const dy = cardState.originalY - mouseY;
@@ -1295,6 +1297,17 @@ const createCardBorder = async (): Promise<void> => {
 				cardState.sprite.x += (cardState.originalX - cardState.sprite.x) * 0.1;
 				cardState.sprite.y += (cardState.originalY - cardState.sprite.y) * 0.1;
 			}
+		}
+		rafScheduled = false;
+	};
+
+	document.addEventListener("mousemove", (e) => {
+		mouseX = e.clientX;
+		mouseY = e.clientY;
+
+		if (!rafScheduled) {
+			rafScheduled = true;
+			requestAnimationFrame(updateCardPositions);
 		}
 	});
 };

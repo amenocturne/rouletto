@@ -519,6 +519,11 @@ const server = Bun.serve<WebSocketData>({
 			return serveFile("public/styles.css", "public");
 		}
 
+		// Serve favicon
+		if (pathname === "/rouletto/favicon.svg") {
+			return serveFile("public/favicon.svg", "public");
+		}
+
 		// Serve bundled JS from dist/
 		if (pathname.startsWith("/rouletto/dist/")) {
 			const filePath = pathname.slice("/rouletto/".length);

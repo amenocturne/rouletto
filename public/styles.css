@@ -924,8 +924,8 @@ button.loading::after {
 /* Game layout - two column */
 .game-layout {
 	display: grid;
-	grid-template-columns: auto 320px;
-	gap: 2rem;
+	grid-template-columns: auto 360px;
+	gap: 5rem;
 	align-items: center;
 	width: auto;
 	max-height: calc(100vh - 200px);
@@ -1367,7 +1367,7 @@ button.loading::after {
 .wheel-row {
 	display: flex;
 	align-items: center;
-	gap: 2rem;
+	gap: 3rem;
 }
 
 /* Action controls - fixed size to prevent layout jumps */
@@ -1619,10 +1619,31 @@ button.loading::after {
 	margin-top: 1rem;
 }
 
+/* Extra large screens - more spacing */
+@media (min-width: 1400px) {
+	.game-layout {
+		gap: 7rem;
+		grid-template-columns: auto 400px;
+	}
+
+	.wheel-row {
+		gap: 4rem;
+	}
+}
+
 /* Medium screens - reduce padding, scale wheel */
 @media (max-width: 1200px) {
 	body {
 		padding: 80px;
+	}
+
+	.game-layout {
+		gap: 3rem;
+		grid-template-columns: auto 320px;
+	}
+
+	.wheel-row {
+		gap: 2rem;
 	}
 
 	#wheel-container canvas {

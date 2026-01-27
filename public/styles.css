@@ -73,6 +73,11 @@
 	padding: 0;
 }
 
+html {
+	overflow: hidden;
+	height: 100%;
+}
+
 body {
 	font-family: var(--font-body);
 	background: #061209;
@@ -1482,6 +1487,7 @@ button.loading::after {
 	justify-content: center;
 	z-index: 1000;
 	animation: fadeIn 0.5s ease-out;
+	overflow: hidden;
 }
 
 @keyframes fadeIn {
@@ -1793,42 +1799,44 @@ button.loading::after {
 	overflow: visible;
 }
 
-/* Result card animation - Playing Card Style */
+/* Result card animation - Casino Panel Style */
 .result-card {
 	position: fixed;
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%) scale(0) rotateY(180deg);
 	animation: cardFlyIn 0.8s ease-out forwards;
-	background: linear-gradient(180deg, #fffef5 0%, #f5f0e0 100%);
-	border: 8px solid var(--wood-dark);
-	border-radius: 12px;
+	background: linear-gradient(165deg, var(--felt-medium) 0%, var(--felt-dark) 50%, #082818 100%);
+	border: 4px solid var(--gold);
+	border-radius: 16px;
 	padding: 2.5rem;
 	min-width: 380px;
 	box-shadow:
-		0 0 0 4px var(--brass),
+		0 0 0 2px var(--wood-dark),
+		0 0 40px rgba(255, 215, 0, 0.3),
 		0 20px 60px rgba(0, 0, 0, 0.6);
 	text-align: center;
 	z-index: 1001;
-	color: var(--wood-dark);
+	color: var(--ivory);
 }
 
 .result-card::before {
 	content: "";
 	position: absolute;
-	inset: 8px;
-	border: 2px solid rgba(184, 134, 11, 0.4);
-	border-radius: 8px;
+	inset: 10px;
+	border: 1px solid rgba(255, 215, 0, 0.2);
+	border-radius: 10px;
 	pointer-events: none;
 }
 
 @keyframes cardFlyIn {
 	0% {
-		transform: translate(-50%, 200%) scale(0.5) rotateY(180deg);
+		transform: translate(-50%, 50%) scale(0) rotateY(180deg);
 		opacity: 0;
 	}
 	60% {
 		transform: translate(-50%, -55%) scale(1.05) rotateY(0deg);
+		opacity: 1;
 	}
 	80% {
 		transform: translate(-50%, -48%) scale(0.98) rotateY(0deg);
@@ -1842,19 +1850,22 @@ button.loading::after {
 .result-card .result-title {
 	font-size: 1.5rem;
 	margin-bottom: 0.5rem;
-	color: var(--wood-dark);
+	color: var(--cream);
 	text-transform: uppercase;
 	letter-spacing: 0.15em;
-	text-shadow: none;
+	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .result-card .winner-name {
 	font-family: var(--font-display);
 	font-size: 2.8rem;
 	font-weight: bold;
-	color: var(--leather-dark);
+	color: var(--gold);
 	margin: 1rem 0;
-	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+	text-shadow:
+		0 4px 8px rgba(0, 0, 0, 0.5),
+		0 0 30px rgba(255, 215, 0, 0.6),
+		0 0 60px rgba(255, 215, 0, 0.3);
 	animation: winnerPulse 2s infinite;
 }
 
@@ -1862,30 +1873,36 @@ button.loading::after {
 	0%,
 	100% {
 		transform: scale(1);
-		text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+		text-shadow:
+			0 4px 8px rgba(0, 0, 0, 0.5),
+			0 0 30px rgba(255, 215, 0, 0.6),
+			0 0 60px rgba(255, 215, 0, 0.3);
 	}
 	50% {
 		transform: scale(1.03);
-		text-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+		text-shadow:
+			0 4px 8px rgba(0, 0, 0, 0.5),
+			0 0 50px rgba(255, 215, 0, 0.9),
+			0 0 80px rgba(255, 215, 0, 0.5);
 	}
 }
 
 .result-card .correct-guessers {
 	margin: 1.5rem 0;
 	padding: 1rem;
-	background: rgba(184, 134, 11, 0.1);
+	background: rgba(0, 0, 0, 0.2);
 	border: 2px solid var(--brass);
 	border-radius: 10px;
 }
 
 .result-card .correct-guessers h3 {
-	color: var(--wood-dark);
+	color: var(--gold);
 	margin-bottom: 0.5rem;
 	font-family: var(--font-display);
 	text-transform: uppercase;
 	letter-spacing: 0.1em;
 	font-size: 0.9rem;
-	text-shadow: none;
+	text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
 }
 
 .result-card .correct-guessers ul {
@@ -1896,12 +1913,12 @@ button.loading::after {
 
 .result-card .correct-guessers li {
 	padding: 0.2rem 0;
-	color: var(--leather-red);
+	color: var(--brass-light);
 	font-weight: 500;
 }
 
 .result-card .no-guessers {
-	color: var(--wood-medium);
+	color: var(--text-muted);
 	font-style: italic;
 	margin: 1.5rem 0;
 }
@@ -1911,7 +1928,7 @@ button.loading::after {
 }
 
 .result-card .waiting-text {
-	color: var(--wood-medium);
+	color: var(--text-muted);
 	font-style: italic;
 	margin-top: 1.5rem;
 }

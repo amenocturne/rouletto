@@ -6,8 +6,8 @@ A casino-style spinning wheel for picking the next retro host. Real-time sync ac
 
 1. Someone opens the app and shares the link with the team
 2. Everyone joins and enters their name
-3. Betting phase: 60 seconds to guess who'll be picked
-4. Host spins the wheel
+3. Betting phase: guess who'll be picked
+4. Host pulls the lever to spin
 5. Winner revealed with dramatic flair
 
 ## Setup

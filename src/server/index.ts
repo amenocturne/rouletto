@@ -37,9 +37,10 @@ import {
 } from "./game";
 
 // WebSocket data type - stores spectator ID and room ID for each connection
+// Note: roomId is mutable because it gets set when a client creates a room
 type WebSocketData = {
 	readonly spectatorId: string;
-	readonly roomId: string | null;
+	roomId: string | null;
 };
 
 // Store active WebSocket connections: spectatorId -> WebSocket
@@ -202,7 +203,7 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 		rooms.set(newRoomId, newRoom);
 
 		// Update WebSocket data with room ID
-		(ws.data as { spectatorId: string; roomId: string | null }).roomId = newRoomId;
+		ws.data.roomId = newRoomId;
 
 		const response: RoomCreatedMessage = { type: "roomCreated", roomId: newRoomId };
 		ws.send(JSON.stringify(response));
@@ -504,7 +505,11 @@ const server = Bun.serve<WebSocketData>({
 
 		// Serve static files - all routes under /rouletto
 		// Landing page
-		if (pathname === "/rouletto" || pathname === "/rouletto/" || pathname === "/rouletto/index.html") {
+		if (
+			pathname === "/rouletto" ||
+			pathname === "/rouletto/" ||
+			pathname === "/rouletto/index.html"
+		) {
 			return serveFile("src/client/index.html", "src/client");
 		}
 

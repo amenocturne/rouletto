@@ -2,6 +2,7 @@ import * as PIXI from "pixi.js";
 import { GlowFilter } from "pixi-filters";
 import type { Candidate, ClientMessage, GameState, ServerMessage } from "../shared/types";
 import { loadCardsTexture, createCardSprite, Suit, Rank, getCardDimensions } from "./cards";
+import { createCrossfadeLoop, type CrossfadeLoopPlayer } from "./music";
 
 // Base path for all routes
 const BASE_PATH = "/rouletto";
@@ -33,6 +34,7 @@ let lastCandidatesListJson: string = ""; // Cache to avoid rebuilding candidates
 let spinSound: HTMLAudioElement | null = null;
 let revealSound: HTMLAudioElement | null = null;
 let audioEnabled = false;
+let backgroundMusic: CrossfadeLoopPlayer | null = null;
 
 // Volume settings (0-1)
 let musicVolume = 0.2; // Default 20%
@@ -62,42 +64,62 @@ const saveVolumeSettings = (): void => {
 const applyVolume = (): void => {
 	if (spinSound) spinSound.volume = sfxVolume;
 	if (revealSound) revealSound.volume = sfxVolume;
-	// If we add background music later, apply musicVolume to it
+	if (backgroundMusic) backgroundMusic.setVolume(musicVolume);
 };
 
 // Audio functions
 const initAudio = (): void => {
-	// Create audio elements
-	spinSound = new Audio("/rouletto/sounds/spin.mp3");
-	spinSound.loop = true;
-	spinSound.volume = sfxVolume;
+	// Create audio elements (these files are optional - SFX may not exist yet)
+	try {
+		spinSound = new Audio("/rouletto/sounds/spin.mp3");
+		spinSound.loop = true;
+		spinSound.volume = sfxVolume;
+		spinSound.load();
+	} catch {
+		spinSound = null;
+	}
 
-	revealSound = new Audio("/rouletto/sounds/reveal.mp3");
-	revealSound.volume = sfxVolume;
-
-	// Preload
-	spinSound.load();
-	revealSound.load();
+	try {
+		revealSound = new Audio("/rouletto/sounds/reveal.mp3");
+		revealSound.volume = sfxVolume;
+		revealSound.load();
+	} catch {
+		revealSound = null;
+	}
 };
 
 const enableAudio = (): void => {
 	if (audioEnabled) return;
 
-	const unlock = (): void => {
-		if (spinSound) {
-			spinSound
-				.play()
-				.then(() => {
-					spinSound?.pause();
-					if (spinSound) spinSound.currentTime = 0;
-					audioEnabled = true;
-					console.log("Audio unlocked");
-					document.removeEventListener("click", unlock);
-					document.removeEventListener("touchstart", unlock);
-				})
-				.catch(() => {
-					// Keep trying on next interaction
-				});
+	const unlock = async (): Promise<void> => {
+		try {
+			// Try to unlock with spin sound if it exists, otherwise use a silent audio context
+			if (spinSound) {
+				try {
+					await spinSound.play();
+					spinSound.pause();
+					spinSound.currentTime = 0;
+				} catch {
+					// SFX file might not exist, continue anyway
+				}
+			}
+
+			audioEnabled = true;
+			console.log("Audio unlocked");
+			document.removeEventListener("click", unlock);
+			document.removeEventListener("touchstart", unlock);
+
+			// Initialize and start background music
+			// Loop point at 3:58.035 = 238.035 seconds, with 2 second crossfade
+			backgroundMusic = await createCrossfadeLoop(
+				"/rouletto/sounds/music.wav",
+				238.035,
+				2,
+			);
+			backgroundMusic.setVolume(musicVolume);
+			backgroundMusic.play();
+		} catch (e) {
+			console.error("Failed to initialize audio:", e);
 		}
 	};
 
@@ -144,6 +166,7 @@ const connect = (roomIdParam?: string): void => {
 	ws.onclose = () => {
 		console.log("Disconnected");
 		stopSpinSound(); // Stop any playing audio
+		if (backgroundMusic) backgroundMusic.stop();
 		// Cleanup Pixi
 		if (glowTickerCallback && pixiApp) {
 			pixiApp.ticker.remove(glowTickerCallback);
@@ -1499,9 +1522,8 @@ const init = async (): Promise<void> => {
 	await createCardBorder();
 
 	loadVolumeSettings();
-	// TODO: Enable when sound files are added
-	// initAudio();
-	// enableAudio();
+	initAudio();
+	enableAudio();
 	renderSettingsPanel();
 	createCRTOverlay();
 

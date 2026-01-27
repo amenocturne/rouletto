@@ -1,5 +1,5 @@
 import * as PIXI from "pixi.js";
-import { CRTFilter, GlowFilter } from "pixi-filters";
+import { GlowFilter } from "pixi-filters";
 import type { Candidate, ClientMessage, GameState, ServerMessage } from "../shared/types";
 import { loadCardsTexture, createCardSprite, Suit, Rank, getCardDimensions } from "./cards";
 
@@ -240,6 +240,7 @@ const showRoomError = (_errorMessage: string): void => {
 };
 
 // Reset Pixi state when navigating away from game
+// Note: Does NOT reset borderCards/spatialGrid - those are for the decorative border which persists
 const resetPixiState = (): void => {
 	if (pixiApp) {
 		pixiApp.destroy(true);
@@ -254,9 +255,6 @@ const resetPixiState = (): void => {
 	currentState = null;
 	mySpectatorId = null;
 	isAdmin = false;
-	// Clear spatial grid when navigating away
-	spatialGrid.clear();
-	borderCards = [];
 };
 
 // Show landing page
@@ -405,36 +403,7 @@ const escapeHtml = (text: string): string => {
 	return div.innerHTML;
 };
 
-// Add mouse tracking for 3D tilt effect (Balatro-style) - RAF throttled
-const addTiltEffect = (element: HTMLElement): void => {
-	let rafPending = false;
-	let lastX = 0;
-	let lastY = 0;
-
-	element.addEventListener("mousemove", (e) => {
-		lastX = e.clientX;
-		lastY = e.clientY;
-
-		if (rafPending) return;
-		rafPending = true;
-
-		requestAnimationFrame(() => {
-			rafPending = false;
-			const rect = element.getBoundingClientRect();
-			const x = lastX - rect.left;
-			const y = lastY - rect.top;
-			const centerX = rect.width / 2;
-			const centerY = rect.height / 2;
-			const rotateX = (y - centerY) / 20;
-			const rotateY = (centerX - x) / 20;
-			element.style.transform = `perspective(500px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-4px)`;
-		});
-	});
-
-	element.addEventListener("mouseleave", () => {
-		element.style.transform = "";
-	});
-};
+// Tilt effect removed - CSS handles simple hover lift with translateY(-3px)
 
 // Render admin controls (add candidates input)
 const renderAdminControls = (): void => {
@@ -586,9 +555,6 @@ const renderCandidatesList = (): void => {
 			});
 		}
 
-		// Add interactive tilt effect (Balatro-style)
-		addTiltEffect(div);
-
 		container.appendChild(div);
 	}
 
@@ -607,9 +573,6 @@ const renderCandidatesList = (): void => {
 			<span class="candidate-name">${escapeHtml(spectator.name)}</span>
 			${spectator.id === mySpectatorId ? '<span class="you-badge">You</span>' : ""}
 		`;
-
-		// Add interactive tilt effect (Balatro-style)
-		addTiltEffect(div);
 
 		container.appendChild(div);
 	}
@@ -1237,6 +1200,9 @@ interface CardState {
 let borderCards: CardState[] = [];
 let borderCardsApp: PIXI.Application | null = null;
 
+// Track displaced cards for efficient return-to-origin updates (must be module-level to clear on resize)
+const displacedCards = new Set<CardState>();
+
 // Spatial hash grid for efficient card lookups
 const GRID_CELL_SIZE = 250;
 
@@ -1269,26 +1235,23 @@ const getNearbyCells = (mouseX: number, mouseY: number, radius: number): readonl
 	return keys;
 };
 
-// Create scattered card border around the screen
-const createCardBorder = async (): Promise<void> => {
-	borderCardsApp = new PIXI.Application();
-	await borderCardsApp.init({
-		width: window.innerWidth,
-		height: window.innerHeight,
-		backgroundAlpha: 0,
-	});
-	borderCardsApp.canvas.style.position = "fixed";
-	borderCardsApp.canvas.style.top = "0";
-	borderCardsApp.canvas.style.left = "0";
-	borderCardsApp.canvas.style.pointerEvents = "none";
-	borderCardsApp.canvas.style.zIndex = "-1";
-	document.body.appendChild(borderCardsApp.canvas);
+// Generate card positions for border
+const generateBorderCards = (): void => {
+	if (!borderCardsApp) return;
 
-	await loadCardsTexture();
+	// Clear existing cards and displaced tracking
+	borderCardsApp.stage.removeChildren();
+	borderCards = [];
+	spatialGrid.clear();
+	displacedCards.clear();
+
 	const cardDims = getCardDimensions();
-	const scale = 1;
 	const w = window.innerWidth;
 	const h = window.innerHeight;
+
+	// Scale cards based on viewport size - smaller on small screens
+	const minDimension = Math.min(w, h);
+	const scale = minDimension < 600 ? 0.5 : minDimension < 900 ? 0.7 : 1;
 
 	// All suits and ranks for variety
 	const suits = [Suit.HEARTS, Suit.SPADES, Suit.DIAMONDS, Suit.CLUBS];
@@ -1371,15 +1334,52 @@ const createCardBorder = async (): Promise<void> => {
 		const rotation = (Math.random() - 0.5) * 0.6;
 		addCard(posX, posY, rotation);
 	}
+};
+
+// Create scattered card border around the screen
+const createCardBorder = async (): Promise<void> => {
+	borderCardsApp = new PIXI.Application();
+	await borderCardsApp.init({
+		width: window.innerWidth,
+		height: window.innerHeight,
+		backgroundAlpha: 0,
+	});
+	borderCardsApp.canvas.style.position = "fixed";
+	borderCardsApp.canvas.style.top = "0";
+	borderCardsApp.canvas.style.left = "0";
+	borderCardsApp.canvas.style.pointerEvents = "none";
+	borderCardsApp.canvas.style.zIndex = "-1";
+	document.body.appendChild(borderCardsApp.canvas);
+
+	await loadCardsTexture();
+
+	// Generate initial cards
+	generateBorderCards();
+
+	// Stop ticker - we use manual RAF-based rendering for hover effect
+	borderCardsApp.ticker.stop();
+	borderCardsApp.render();
+
+	// Handle window resize - debounced to avoid excessive regeneration
+	let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+	window.addEventListener("resize", () => {
+		if (resizeTimeout) {
+			clearTimeout(resizeTimeout);
+		}
+		resizeTimeout = setTimeout(() => {
+			if (borderCardsApp) {
+				borderCardsApp.renderer.resize(window.innerWidth, window.innerHeight);
+				generateBorderCards();
+				borderCardsApp.render();
+			}
+		}, 150);
+	});
 
 	// Add hover effect - cards move away from mouse when nearby
 	const hoverRadius = 220; // Distance at which cards start reacting
 	const maxDisplacement = 25; // Maximum pixels to move
 
-	// Track displaced cards for efficient return-to-origin updates
-	const displacedCards = new Set<CardState>();
-
-	// RAF-throttled mouse tracking
+	// RAF-throttled mouse tracking (displacedCards is module-level, cleared on resize)
 	let mouseX = 0;
 	let mouseY = 0;
 	let rafScheduled = false;
@@ -1451,6 +1451,11 @@ const createCardBorder = async (): Promise<void> => {
 				}
 			}
 		}
+
+		// Render the updated card positions
+		if (borderCardsApp) {
+			borderCardsApp.render();
+		}
 	};
 
 	document.addEventListener("mousemove", (e) => {
@@ -1461,7 +1466,7 @@ const createCardBorder = async (): Promise<void> => {
 			rafScheduled = true;
 			requestAnimationFrame(updateCardPositions);
 		}
-	})
+	});
 };
 
 // Hide loading overlay with fade animation

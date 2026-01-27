@@ -925,9 +925,10 @@ button.loading::after {
 .game-layout {
 	display: grid;
 	grid-template-columns: auto 320px;
-	gap: 3rem;
-	align-items: start;
+	gap: 2rem;
+	align-items: center;
 	width: auto;
+	max-height: calc(100vh - 200px);
 }
 
 .game-left {
@@ -935,22 +936,17 @@ button.loading::after {
 	flex-direction: column;
 	align-items: center;
 	gap: 1rem;
-	/* Push down to center on felt area */
-	margin-top: 12rem;
 }
 
 /* Game right - simple transparent container for cards on felt */
 .game-right {
 	display: flex;
 	flex-direction: column;
-	gap: 1rem;
-	align-self: start;
+	gap: 0.75rem;
+	align-self: center;
 	padding: 0.5rem;
-	/* Align with wheel section */
-	margin-top: 16rem;
-	/* Fixed height to prevent layout shift when list grows */
-	height: calc(100vh - 280px);
-	min-height: 400px;
+	/* Constrain height to fit viewport */
+	max-height: calc(100vh - 250px);
 	overflow-y: auto;
 }
 
@@ -1136,7 +1132,9 @@ button.loading::after {
 	margin-bottom: 1rem;
 	max-height: 400px;
 	overflow-y: auto;
-	padding-right: 0.5rem;
+	/* Extra horizontal padding for 3D card hover tilt effect */
+	padding: 0.5rem 1rem;
+	margin: 0 -0.5rem;
 }
 
 /* Custom scrollbar for candidates list */
@@ -1204,9 +1202,6 @@ button.loading::after {
 	align-items: center;
 	gap: 0.6rem;
 	position: relative;
-	transform-style: preserve-3d;
-	/* Subtle 3D tilt like card laying on table */
-	transform: perspective(800px) rotateX(2deg);
 	/* Shadow suggesting it's resting on felt */
 	box-shadow:
 		0 4px 8px rgba(0, 0, 0, 0.25),
@@ -1214,11 +1209,9 @@ button.loading::after {
 		0 1px 0 rgba(255, 255, 255, 0.8) inset,
 		0 -1px 0 rgba(0, 0, 0, 0.1) inset;
 	transition:
-		transform 0.15s ease,
-		box-shadow 0.15s ease,
-		border-color 0.15s ease;
-	/* GPU acceleration for tilt effect */
-	will-change: transform;
+		transform 0.2s ease,
+		box-shadow 0.2s ease,
+		border-color 0.2s ease;
 }
 
 /* Inner decorative border like a playing card */
@@ -1248,11 +1241,11 @@ button.loading::after {
 
 .candidate-card:hover {
 	border-color: var(--brass);
-	transform: perspective(800px) rotateX(4deg) rotateY(-2deg) translateY(-6px);
+	transform: translateY(-3px);
 	box-shadow:
-		0 12px 24px rgba(0, 0, 0, 0.35),
-		0 20px 40px rgba(0, 0, 0, 0.2),
-		0 0 25px rgba(255, 215, 0, 0.15),
+		0 8px 16px rgba(0, 0, 0, 0.3),
+		0 12px 24px rgba(0, 0, 0, 0.15),
+		0 0 15px rgba(255, 215, 0, 0.2),
 		0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
@@ -1272,11 +1265,11 @@ button.loading::after {
 
 .candidate-card.can-bet:hover {
 	border-color: var(--gold);
-	transform: perspective(800px) rotateX(3deg) translateY(-4px);
+	transform: translateY(-3px);
 	box-shadow:
 		0 8px 16px rgba(0, 0, 0, 0.3),
-		0 12px 24px rgba(0, 0, 0, 0.2),
-		0 0 20px rgba(255, 215, 0, 0.25),
+		0 12px 24px rgba(0, 0, 0, 0.15),
+		0 0 20px rgba(255, 215, 0, 0.3),
 		0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
@@ -1473,10 +1466,14 @@ button.loading::after {
 }
 
 #wheel-container canvas {
-	border-radius: 50%;
-	box-shadow:
-		0 0 30px rgba(255, 215, 0, 0.3),
-		0 0 60px rgba(0, 0, 0, 0.4);
+	/* No border-radius - wheel is drawn as circle, text can extend beyond */
+	/* Use drop-shadow filter instead of box-shadow to follow actual wheel shape */
+	filter:
+		drop-shadow(0 0 30px rgba(255, 215, 0, 0.3))
+		drop-shadow(0 0 60px rgba(0, 0, 0, 0.4));
+	/* Scale wheel based on viewport - account for 200px body padding, title, and sidebar */
+	max-width: min(500px, calc(100vw - 600px), calc(100vh - 450px));
+	max-height: min(500px, calc(100vw - 600px), calc(100vh - 450px));
 }
 
 /* Results Overlay */
@@ -1622,23 +1619,141 @@ button.loading::after {
 	margin-top: 1rem;
 }
 
-/* Mobile responsive styles */
-@media (max-width: 900px) {
-	.game-layout {
-		grid-template-columns: 1fr;
-		gap: 1.5rem;
+/* Medium screens - reduce padding, scale wheel */
+@media (max-width: 1200px) {
+	body {
+		padding: 80px;
 	}
 
+	#wheel-container canvas {
+		max-width: min(450px, calc(100vw - 500px), calc(100vh - 350px));
+		max-height: min(450px, calc(100vw - 500px), calc(100vh - 350px));
+	}
+}
+
+/* Tablet/narrow screens - two column top, players bottom */
+@media (max-width: 900px) {
+	body {
+		padding: 40px 25px;
+	}
+
+	.game-layout {
+		grid-template-columns: 1fr;
+		gap: 0.5rem;
+		max-height: calc(100vh - 80px);
+		/* Push content down to clear top card border */
+		padding-top: 4rem;
+	}
+
+	/* Use grid on game-left: title+button on left, wheel on right */
 	.game-left {
-		order: 1;
+		display: grid;
+		grid-template-columns: auto 1fr;
+		grid-template-areas:
+			"title wheel"
+			"controls wheel";
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.wheel-title {
+		grid-area: title;
+		font-size: 1.4rem;
+		text-align: center;
+	}
+
+	/* Make wheel-row children participate in game-left grid */
+	.wheel-row {
+		display: contents;
+	}
+
+	#action-controls {
+		grid-area: controls;
+		width: auto;
+		height: auto;
+	}
+
+	#wheel-container {
+		grid-area: wheel;
+		justify-self: center;
 	}
 
 	.game-right {
 		order: 2;
+		/* Scrollable player list within visible area */
+		max-height: calc(100vh - 550px);
+		min-height: 100px;
+		overflow-y: auto;
 	}
+
+	#game-screen.screen {
+		height: calc(100vh - 80px);
+		padding: 0.5rem 0;
+		align-items: flex-start;
+	}
+
+	#wheel-container canvas {
+		max-width: min(280px, calc(100vw - 200px), calc(100vh - 400px));
+		max-height: min(280px, calc(100vw - 200px), calc(100vh - 400px));
+	}
+
+	/* Inline add player form */
+	.add-candidate-row {
+		flex-direction: row;
+		gap: 0.5rem;
+		padding: 0.75rem;
+	}
+
+	.add-candidate-row input {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.add-candidate-row button {
+		width: auto;
+		padding: 0.75rem 1rem;
+		flex-shrink: 0;
+	}
+
+	/* Reduce stacked layer offset on small screens */
+	.add-candidate-row::before {
+		inset: 3px -3px -3px 3px;
+	}
+
+	.add-candidate-row::after {
+		inset: 6px -6px -6px 6px;
+	}
+
 }
 
 @media (max-width: 600px) {
+	body {
+		padding: 20px 10px;
+	}
+
+	.game-layout {
+		max-height: calc(100vh - 40px);
+		padding-top: 3rem;
+	}
+
+	#game-screen.screen {
+		height: calc(100vh - 40px);
+	}
+
+	.game-right {
+		max-height: calc(100vh - 480px);
+		min-height: 80px;
+	}
+
+	.wheel-title {
+		font-size: 1.2rem;
+	}
+
+	#wheel-container canvas {
+		max-width: min(220px, calc(100vw - 160px), calc(100vh - 350px));
+		max-height: min(220px, calc(100vw - 160px), calc(100vh - 350px));
+	}
+
 	#join-screen h1,
 	#landing-screen h1,
 	#error-screen h1 {
@@ -1690,11 +1805,6 @@ button.loading::after {
 
 	.winner-name {
 		font-size: 2rem;
-	}
-
-	#wheel-container canvas {
-		max-width: 320px;
-		max-height: 320px;
 	}
 
 	.result-content {

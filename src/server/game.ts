@@ -25,6 +25,21 @@ export const addSpectator = (state: GameState, spectator: Spectator): GameState 
 	spectators: [...state.spectators, spectator],
 });
 
+/** Finds a spectator by name (case-insensitive). Returns the spectator or null. */
+export const findSpectatorByName = (state: GameState, name: string): Spectator | null => {
+	return state.spectators.find((s) => s.name.toLowerCase() === name.toLowerCase()) ?? null;
+};
+
+/** Updates an existing spectator's ID (for rejoining with same name). */
+export const updateSpectatorId = (
+	state: GameState,
+	oldId: string,
+	newId: string,
+): GameState => ({
+	...state,
+	spectators: state.spectators.map((s) => (s.id === oldId ? { ...s, id: newId } : s)),
+});
+
 /** Removes a spectator from the game. */
 export const removeSpectator = (state: GameState, spectatorId: string): GameState => {
 	const spectatorExists = state.spectators.some((s) => s.id === spectatorId);
@@ -42,7 +57,7 @@ export const removeSpectator = (state: GameState, spectatorId: string): GameStat
 // Candidate Functions
 // ============================================
 
-/** Adds candidates from newline-separated text. */
+/** Adds candidates from newline-separated text. Skips names that already exist (case-insensitive). */
 export const addCandidates = (state: GameState, namesText: string): GameState => {
 	// Parse newline-separated names, trim whitespace, filter empty
 	const names = namesText
@@ -54,7 +69,15 @@ export const addCandidates = (state: GameState, namesText: string): GameState =>
 		return state;
 	}
 
-	const newCandidates: readonly Candidate[] = names.map((name) => ({
+	// Filter out names that already exist (case-insensitive)
+	const existingNames = new Set(state.candidates.map((c) => c.name.toLowerCase()));
+	const uniqueNewNames = names.filter((name) => !existingNames.has(name.toLowerCase()));
+
+	if (uniqueNewNames.length === 0) {
+		return state;
+	}
+
+	const newCandidates: readonly Candidate[] = uniqueNewNames.map((name) => ({
 		id: crypto.randomUUID(),
 		name,
 	}));

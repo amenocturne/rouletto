@@ -24,6 +24,7 @@ import {
 	canSpin,
 	canStartBetting,
 	createInitialState,
+	findSpectatorByName,
 	placeBet,
 	removeCandidate,
 	removeSpectator,
@@ -32,6 +33,7 @@ import {
 	setResult,
 	startBetting,
 	startSpinning,
+	updateSpectatorId,
 } from "./game";
 
 // WebSocket data type - stores spectator ID and room ID for each connection
@@ -243,24 +245,38 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 
 	switch (message.type) {
 		case "join": {
-			// Create spectator and add to state
-			const spectator = {
-				id: spectatorId,
-				name: message.name,
-				bet: null,
-			};
-			updateRoomState(roomId, (r) => ({
-				...r,
-				gameState: addSpectator(r.gameState, spectator),
-			}));
+			// Check if spectator with same name already exists
+			const existingSpectator = findSpectatorByName(currentRoom.gameState, message.name);
 
-			// Add to candidates if joinAsPlayer is true (default: true)
-			const joinAsPlayer = message.joinAsPlayer !== false;
-			if (joinAsPlayer) {
+			if (existingSpectator) {
+				// Rejoin: update existing spectator's ID to new connection
+				const oldId = existingSpectator.id;
 				updateRoomState(roomId, (r) => ({
 					...r,
-					gameState: addCandidates(r.gameState, message.name),
+					// Update adminId if this spectator was admin
+					adminId: r.adminId === oldId ? spectatorId : r.adminId,
+					gameState: updateSpectatorId(r.gameState, oldId, spectatorId),
 				}));
+			} else {
+				// New spectator: add to state
+				const spectator = {
+					id: spectatorId,
+					name: message.name,
+					bet: null,
+				};
+				updateRoomState(roomId, (r) => ({
+					...r,
+					gameState: addSpectator(r.gameState, spectator),
+				}));
+
+				// Add to candidates if joinAsPlayer is true (default: true)
+				const joinAsPlayer = message.joinAsPlayer !== false;
+				if (joinAsPlayer) {
+					updateRoomState(roomId, (r) => ({
+						...r,
+						gameState: addCandidates(r.gameState, message.name),
+					}));
+				}
 			}
 
 			broadcastState(roomId);

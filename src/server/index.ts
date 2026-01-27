@@ -644,6 +644,3 @@ const server = Bun.serve<WebSocketData>({
 });
 
 console.log(`Server running on http://localhost:${server.port}`);
-
-// Export for potential testing
-export { connections, rooms };

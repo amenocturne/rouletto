@@ -252,6 +252,9 @@ const resetPixiState = (): void => {
 	currentState = null;
 	mySpectatorId = null;
 	isAdmin = false;
+	// Clear spatial grid when navigating away
+	spatialGrid.clear();
+	borderCards = [];
 };
 
 // Show landing page
@@ -1171,6 +1174,38 @@ interface CardState {
 let borderCards: CardState[] = [];
 let borderCardsApp: PIXI.Application | null = null;
 
+// Spatial hash grid for efficient card lookups
+const GRID_CELL_SIZE = 250;
+
+interface GridCell {
+	cards: CardState[];
+}
+
+const spatialGrid: Map<string, GridCell> = new Map();
+
+// Helper to get grid key from coordinates
+const getGridKey = (x: number, y: number): string => {
+	const cellX = Math.floor(x / GRID_CELL_SIZE);
+	const cellY = Math.floor(y / GRID_CELL_SIZE);
+	return `${cellX},${cellY}`;
+};
+
+// Get all cells that could contain cards within radius of mouse
+const getNearbyCells = (mouseX: number, mouseY: number, radius: number): readonly string[] => {
+	const keys: string[] = [];
+	const minCellX = Math.floor((mouseX - radius) / GRID_CELL_SIZE);
+	const maxCellX = Math.floor((mouseX + radius) / GRID_CELL_SIZE);
+	const minCellY = Math.floor((mouseY - radius) / GRID_CELL_SIZE);
+	const maxCellY = Math.floor((mouseY + radius) / GRID_CELL_SIZE);
+
+	for (let cx = minCellX; cx <= maxCellX; cx++) {
+		for (let cy = minCellY; cy <= maxCellY; cy++) {
+			keys.push(`${cx},${cy}`);
+		}
+	}
+	return keys;
+};
+
 // Create scattered card border around the screen
 const createCardBorder = async (): Promise<void> => {
 	borderCardsApp = new PIXI.Application();
@@ -1225,7 +1260,16 @@ const createCardBorder = async (): Promise<void> => {
 		card.y = y;
 		card.rotation = rotation;
 		borderCardsApp?.stage.addChild(card);
-		borderCards.push({ sprite: card, originalX: x, originalY: y });
+
+		const cardState = { sprite: card, originalX: x, originalY: y };
+		borderCards.push(cardState);
+
+		// Add to spatial grid
+		const key = getGridKey(x, y);
+		if (!spatialGrid.has(key)) {
+			spatialGrid.set(key, { cards: [] });
+		}
+		spatialGrid.get(key)?.cards.push(cardState);
 	};
 
 	// Generate cards along edges - keep them tight to edges
@@ -1268,14 +1312,32 @@ const createCardBorder = async (): Promise<void> => {
 	// Add hover effect - cards move away from mouse when nearby
 	const hoverRadius = 220; // Distance at which cards start reacting
 	const maxDisplacement = 25; // Maximum pixels to move
+	const movementThreshold = 0.5; // Minimum movement to be considered "moving"
 
 	// RAF-throttled mouse tracking
 	let mouseX = 0;
 	let mouseY = 0;
 	let rafScheduled = false;
+	let isAnimating = false;
 
 	const updateCardPositions = (): void => {
-		for (const cardState of borderCards) {
+		let anyCardMoving = false;
+
+		// Get cards from nearby cells only (spatial partitioning optimization)
+		const nearbyKeys = getNearbyCells(mouseX, mouseY, hoverRadius + maxDisplacement);
+		const nearbyCards = new Set<CardState>();
+
+		for (const key of nearbyKeys) {
+			const cell = spatialGrid.get(key);
+			if (cell) {
+				for (const card of cell.cards) {
+					nearbyCards.add(card);
+				}
+			}
+		}
+
+		// Update nearby cards (attraction toward mouse displacement)
+		for (const cardState of nearbyCards) {
 			const dx = cardState.originalX - mouseX;
 			const dy = cardState.originalY - mouseY;
 			const distance = Math.sqrt(dx * dx + dy * dy);
@@ -1297,8 +1359,53 @@ const createCardBorder = async (): Promise<void> => {
 				cardState.sprite.x += (cardState.originalX - cardState.sprite.x) * 0.1;
 				cardState.sprite.y += (cardState.originalY - cardState.sprite.y) * 0.1;
 			}
+
+			// Check if card is still moving
+			if (
+				Math.abs(cardState.sprite.x - cardState.originalX) > movementThreshold ||
+				Math.abs(cardState.sprite.y - cardState.originalY) > movementThreshold
+			) {
+				anyCardMoving = true;
+			}
 		}
+
+		// Update all cards that are displaced but NOT near mouse (return to origin)
+		for (const cardState of borderCards) {
+			if (!nearbyCards.has(cardState)) {
+				// Only update if not at original position
+				const dxFromOrigin = cardState.originalX - cardState.sprite.x;
+				const dyFromOrigin = cardState.originalY - cardState.sprite.y;
+				if (
+					Math.abs(dxFromOrigin) > movementThreshold ||
+					Math.abs(dyFromOrigin) > movementThreshold
+				) {
+					cardState.sprite.x += dxFromOrigin * 0.1;
+					cardState.sprite.y += dyFromOrigin * 0.1;
+					anyCardMoving = true;
+				}
+			}
+		}
+
 		rafScheduled = false;
+
+		// Control ticker based on movement (render-on-demand)
+		if (borderCardsApp) {
+			if (anyCardMoving) {
+				isAnimating = true;
+				if (!borderCardsApp.ticker.started) {
+					borderCardsApp.ticker.start();
+				}
+				// Schedule next update to continue animation
+				if (!rafScheduled) {
+					rafScheduled = true;
+					requestAnimationFrame(updateCardPositions);
+				}
+			} else if (isAnimating) {
+				// Cards have settled - stop ticker
+				isAnimating = false;
+				borderCardsApp.ticker.stop();
+			}
+		}
 	};
 
 	document.addEventListener("mousemove", (e) => {
@@ -1307,9 +1414,18 @@ const createCardBorder = async (): Promise<void> => {
 
 		if (!rafScheduled) {
 			rafScheduled = true;
+			// Start ticker if not running (mouse moved, cards may need to react)
+			if (borderCardsApp && !borderCardsApp.ticker.started) {
+				borderCardsApp.ticker.start();
+			}
 			requestAnimationFrame(updateCardPositions);
 		}
 	});
+
+	// Stop ticker initially since nothing is moving
+	if (borderCardsApp) {
+		borderCardsApp.ticker.stop();
+	}
 };
 
 // Hide loading overlay with fade animation

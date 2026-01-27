@@ -1,5 +1,5 @@
 {
-	"name": "casino-wheel",
+	"name": "rouletto",
 	"module": "index.ts",
 	"type": "module",
 	"private": true,

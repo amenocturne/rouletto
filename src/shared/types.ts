@@ -127,7 +127,7 @@ export type ErrorMessage = {
 /** Sound synchronization message */
 export type PlaySoundMessage = {
 	readonly type: "playSound";
-	readonly sound: "spin" | "reveal";
+	readonly sound: "lever" | "spin" | "reveal";
 };
 
 /** All possible messages from server to client */

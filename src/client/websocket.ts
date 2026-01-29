@@ -4,7 +4,12 @@
  */
 
 import type { ClientMessage, ServerMessage, GameState } from "../shared/types";
-import { stopAllAudio, playWheelRotationSound, playShowNextHostSound } from "./audio";
+import {
+	stopAllAudio,
+	playPullLeverSound,
+	playWheelRotationSound,
+	playShowNextHostSound,
+} from "./audio";
 import { spinWheel, resetWheelState, getPixiApp, getGlowTickerCallback } from "./wheel";
 
 // Base path for all routes
@@ -75,7 +80,9 @@ const handleServerMessage = (
 			if (onError) onError(message.message);
 			break;
 		case "playSound":
-			if (message.sound === "spin") {
+			if (message.sound === "lever") {
+				playPullLeverSound();
+			} else if (message.sound === "spin") {
 				playWheelRotationSound();
 			} else if (message.sound === "reveal") {
 				playShowNextHostSound();

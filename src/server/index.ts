@@ -380,6 +380,10 @@ const handleMessage = (ws: ServerWebSocket<WebSocketData>, message: ClientMessag
 				return;
 			}
 
+			// Broadcast lever sound first
+			const leverSoundMsg: PlaySoundMessage = { type: "playSound", sound: "lever" };
+			broadcastToRoom(roomId, leverSoundMsg);
+
 			// Broadcast spin result (triggers wheel animation on clients)
 			const spinResultMsg: SpinResultMessage = {
 				type: "spinResult",

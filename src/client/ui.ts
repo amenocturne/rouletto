@@ -22,7 +22,6 @@ import {
 	playClickBrownButtonSound,
 	playHoverBrownButtonSound,
 	playVoteSound,
-	playPullLeverSound,
 } from "./audio";
 
 // Base path for all routes
@@ -532,9 +531,6 @@ export const renderActionControls = (
 				lever.onclick = () => {
 					const handle = document.getElementById("lever-handle");
 					if (!handle || handle.classList.contains("pulled")) return;
-
-					// Play lever sound
-					playPullLeverSound();
 
 					// Pull down and stay down
 					handle.classList.add("pulled");

@@ -32,3 +32,10 @@ jobs:
             docker run -d --name rouletto --restart unless-stopped -p 8003:3000 rouletto:latest
             rm /tmp/rouletto.tar.gz
           '
+
+      - name: Purge Cloudflare cache
+        run: |
+          curl -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CLOUDFLARE_ZONE_ID }}/purge_cache" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}'

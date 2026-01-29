@@ -6,6 +6,7 @@
 
 import * as PIXI from "pixi.js";
 import { loadCardsTexture, createCardSprite, Suit, Rank, getCardDimensions } from "./cards";
+import { playCardHoverSound } from "./audio";
 
 // Card border state for hover effects
 interface CardState {
@@ -19,6 +20,9 @@ let borderCardsApp: PIXI.Application | null = null;
 
 // Track displaced cards for efficient return-to-origin updates
 const displacedCards = new Set<CardState>();
+
+// Track the closest card from previous frame (for sound triggering)
+let previousClosestCard: CardState | null = null;
 
 // Spatial hash grid for efficient card lookups
 const GRID_CELL_SIZE = 250;
@@ -217,6 +221,10 @@ export const createCardBorder = async (): Promise<void> => {
 			}
 		}
 
+		// Find closest card and update all nearby cards
+		let closestCard: CardState | null = null;
+		let closestDistance = Number.POSITIVE_INFINITY;
+
 		// Update nearby cards (move away from mouse)
 		for (const cardState of nearbyCards) {
 			const dx = cardState.originalX - mouseX;
@@ -224,6 +232,12 @@ export const createCardBorder = async (): Promise<void> => {
 			const distance = Math.sqrt(dx * dx + dy * dy);
 
 			if (distance < hoverRadius && distance > 0) {
+				// Track closest card
+				if (distance < closestDistance) {
+					closestDistance = distance;
+					closestCard = cardState;
+				}
+
 				// Calculate displacement - stronger when closer
 				const strength = 1 - distance / hoverRadius;
 				const displacement = maxDisplacement * strength;
@@ -268,6 +282,12 @@ export const createCardBorder = async (): Promise<void> => {
 				}
 			}
 		}
+
+		// Play sound only when closest card changes, with volume based on displaced count
+		if (closestCard && closestCard !== previousClosestCard) {
+			playCardHoverSound(displacedCards.size);
+		}
+		previousClosestCard = closestCard;
 
 		// Render the updated card positions
 		if (borderCardsApp) {

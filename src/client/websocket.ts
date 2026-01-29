@@ -4,7 +4,7 @@
  */
 
 import type { ClientMessage, ServerMessage, GameState } from "../shared/types";
-import { stopAllAudio, playSpinSound, playRevealSound } from "./audio";
+import { stopAllAudio, playWheelRotationSound, playShowNextHostSound } from "./audio";
 import { spinWheel, resetWheelState, getPixiApp, getGlowTickerCallback } from "./wheel";
 
 // Base path for all routes
@@ -14,7 +14,8 @@ const BASE_PATH = "/rouletto";
 let ws: WebSocket | null = null;
 
 // Callback references (set by index.ts)
-let onStateUpdate: ((state: GameState, spectatorId: string, isAdmin: boolean) => void) | null = null;
+let onStateUpdate: ((state: GameState, spectatorId: string, isAdmin: boolean) => void) | null =
+	null;
 let onRoomCreated: ((roomId: string) => void) | null = null;
 let onRoomError: ((message: string) => void) | null = null;
 let onError: ((message: string) => void) | null = null;
@@ -75,9 +76,9 @@ const handleServerMessage = (
 			break;
 		case "playSound":
 			if (message.sound === "spin") {
-				playSpinSound();
+				playWheelRotationSound();
 			} else if (message.sound === "reveal") {
-				playRevealSound();
+				playShowNextHostSound();
 			}
 			break;
 	}

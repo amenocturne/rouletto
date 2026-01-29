@@ -31,11 +31,7 @@ export const findSpectatorByName = (state: GameState, name: string): Spectator |
 };
 
 /** Updates an existing spectator's ID (for rejoining with same name). */
-export const updateSpectatorId = (
-	state: GameState,
-	oldId: string,
-	newId: string,
-): GameState => ({
+export const updateSpectatorId = (state: GameState, oldId: string, newId: string): GameState => ({
 	...state,
 	spectators: state.spectators.map((s) => (s.id === oldId ? { ...s, id: newId } : s)),
 });

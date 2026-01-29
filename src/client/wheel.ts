@@ -249,10 +249,7 @@ const pulseWinnerGlow = (): void => {
 };
 
 /** Spin the wheel to land on the winner */
-export const spinWheel = (
-	winnerId: string,
-	candidates: readonly Candidate[],
-): void => {
+export const spinWheel = (winnerId: string, candidates: readonly Candidate[]): void => {
 	if (!wheelContainer || isSpinning) return;
 	isSpinning = true;
 

@@ -12,7 +12,18 @@ import {
 	renderWheel,
 	resetWheelState,
 } from "./wheel";
-import { getMusicVolume, getSfxVolume, setMusicVolume, setSfxVolume } from "./audio";
+import {
+	getMusicVolume,
+	getSfxVolume,
+	setMusicVolume,
+	setSfxVolume,
+	playClickGoldenButtonSound,
+	playHoverGoldenButtonSound,
+	playClickBrownButtonSound,
+	playHoverBrownButtonSound,
+	playVoteSound,
+	playPullLeverSound,
+} from "./audio";
 
 // Base path for all routes
 const BASE_PATH = "/rouletto";
@@ -53,10 +64,7 @@ export const resetPixiState = (): void => {
 };
 
 /** Show room error screen */
-export const showRoomError = (
-	_errorMessage: string,
-	showLandingPageFn: () => void,
-): void => {
+export const showRoomError = (_errorMessage: string, showLandingPageFn: () => void): void => {
 	resetPixiState();
 
 	const app = document.getElementById("app");
@@ -71,7 +79,9 @@ export const showRoomError = (
 
 	const goHomeBtn = document.getElementById("go-home-btn") as HTMLButtonElement | null;
 	if (goHomeBtn) {
+		goHomeBtn.onmouseenter = playHoverGoldenButtonSound;
 		goHomeBtn.onclick = () => {
+			playClickGoldenButtonSound();
 			window.history.pushState({}, "", `${BASE_PATH}/`);
 			showLandingPageFn();
 		};
@@ -99,7 +109,9 @@ export const showLandingPage = (
 
 	const createBtn = document.getElementById("create-room-btn") as HTMLButtonElement | null;
 	if (createBtn) {
+		createBtn.onmouseenter = playHoverGoldenButtonSound;
 		createBtn.onclick = () => {
+			playClickGoldenButtonSound();
 			createBtn.disabled = true;
 			connectFn();
 			// Wait for connection, then send createRoom
@@ -180,10 +192,12 @@ export const showJoinScreen = (
 	setupJoinForm(sendFn);
 
 	// Setup copy button
-	const copyBtn = document.getElementById("copy-url-btn");
+	const copyBtn = document.getElementById("copy-url-btn") as HTMLButtonElement | null;
 	const shareInput = document.getElementById("share-url-input") as HTMLInputElement | null;
 	if (copyBtn && shareInput) {
+		copyBtn.onmouseenter = playHoverBrownButtonSound;
 		copyBtn.onclick = () => {
+			playClickBrownButtonSound();
 			shareInput.select();
 			navigator.clipboard.writeText(shareInput.value).then(() => {
 				copyBtn.textContent = "Copied!";
@@ -213,11 +227,18 @@ const setupJoinForm = (sendFn: (msg: ClientMessage) => void): void => {
 	const form = document.getElementById("join-form") as HTMLFormElement | null;
 	const input = document.getElementById("name-input") as HTMLInputElement | null;
 	const spectatorCheckbox = document.getElementById("spectator-mode") as HTMLInputElement | null;
+	const submitBtn = form?.querySelector("button[type='submit']") as HTMLButtonElement | null;
 
 	if (!form || !input) return;
 
+	// Add sounds to submit button (brown button)
+	if (submitBtn) {
+		submitBtn.onmouseenter = playHoverBrownButtonSound;
+	}
+
 	form.addEventListener("submit", (e) => {
 		e.preventDefault();
+		playClickBrownButtonSound();
 		const name = input.value.trim();
 		// Inverted logic: if spectator mode is checked, joinAsPlayer is false
 		const joinAsPlayer = !(spectatorCheckbox?.checked ?? false);
@@ -262,11 +283,12 @@ export const renderAdminControls = (
 		</div>
 	`;
 
-	const addBtn = document.getElementById("add-candidate-btn");
+	const addBtn = document.getElementById("add-candidate-btn") as HTMLButtonElement | null;
 	const input = document.getElementById("candidate-input") as HTMLInputElement | null;
 
 	const addCandidate = (): void => {
 		if (input?.value.trim()) {
+			playClickBrownButtonSound();
 			// Set flag to refocus after re-render
 			shouldFocusCandidateInput = true;
 			sendFn({ type: "addCandidates", names: input.value.trim() });
@@ -275,6 +297,7 @@ export const renderAdminControls = (
 	};
 
 	if (addBtn && input) {
+		addBtn.onmouseenter = playHoverBrownButtonSound;
 		addBtn.onclick = addCandidate;
 		input.onkeydown = (e) => {
 			if (e.key === "Enter") {
@@ -370,15 +393,21 @@ export const renderCandidatesList = (
 			div.addEventListener("click", (e) => {
 				// Don't bet if clicking the remove button
 				if ((e.target as HTMLElement).classList.contains("remove-candidate-btn")) return;
+				playVoteSound();
 				sendFn({ type: "placeBet", targetId: candidate.id });
 			});
 		}
 
 		// Remove candidate button (admin only during waiting)
-		const removeBtn = div.querySelector(".remove-candidate-btn");
+		const removeBtn = div.querySelector(".remove-candidate-btn") as HTMLButtonElement | null;
 		if (removeBtn) {
+			removeBtn.addEventListener("mouseenter", (e) => {
+				e.stopPropagation();
+				playHoverBrownButtonSound();
+			});
 			removeBtn.addEventListener("click", (e) => {
 				e.stopPropagation();
+				playClickBrownButtonSound();
 				sendFn({ type: "removeCandidate", candidateId: candidate.id });
 			});
 		}
@@ -427,7 +456,11 @@ export const renderActionControls = (
 		btn.className = "host-btn";
 		btn.textContent = "Start Betting";
 		if (isAdmin) {
-			btn.addEventListener("click", () => sendFn({ type: "startBetting" }));
+			btn.addEventListener("mouseenter", playHoverGoldenButtonSound);
+			btn.addEventListener("click", () => {
+				playClickGoldenButtonSound();
+				sendFn({ type: "startBetting" });
+			});
 		} else {
 			btn.disabled = true;
 		}
@@ -499,6 +532,9 @@ export const renderActionControls = (
 				lever.onclick = () => {
 					const handle = document.getElementById("lever-handle");
 					if (!handle || handle.classList.contains("pulled")) return;
+
+					// Play lever sound
+					playPullLeverSound();
 
 					// Pull down and stay down
 					handle.classList.add("pulled");
@@ -581,7 +617,9 @@ export const renderResultOverlay = (
 	// Add event listener for play again button
 	const playAgainBtn = document.getElementById("play-again-btn") as HTMLButtonElement | null;
 	if (playAgainBtn) {
+		playAgainBtn.onmouseenter = playHoverGoldenButtonSound;
 		playAgainBtn.onclick = () => {
+			playClickGoldenButtonSound();
 			sendFn({ type: "reset" });
 		};
 		playAgainBtn.focus();

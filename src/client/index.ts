@@ -6,7 +6,14 @@
 import type { GameState } from "../shared/types";
 
 // Module imports
-import { loadVolumeSettings, initAudio, enableAudio } from "./audio";
+import {
+	loadVolumeSettings,
+	initAudio,
+	enableAudio,
+	playAddUserSound,
+	playRemoveUserSound,
+	playVoteSound,
+} from "./audio";
 import { createCardBorder } from "./cardBorder";
 import {
 	connect,
@@ -49,6 +56,39 @@ const getCurrentCandidates = (): readonly { readonly id: string; readonly name: 
 
 /** Handle state updates from server */
 const handleStateUpdate = (state: GameState, spectatorId: string, admin: boolean): void => {
+	// Detect user joins/leaves by comparing counts
+	const previousSpectatorCount = currentState?.spectators.length ?? 0;
+	const newSpectatorCount = state.spectators.length;
+	const previousCandidateCount = currentState?.candidates.length ?? 0;
+	const newCandidateCount = state.candidates.length;
+
+	// Only play sounds after we've joined (have a spectatorId)
+	if (mySpectatorId) {
+		if (newSpectatorCount > previousSpectatorCount) {
+			playAddUserSound();
+		} else if (newSpectatorCount < previousSpectatorCount) {
+			playRemoveUserSound();
+		} else if (newCandidateCount < previousCandidateCount) {
+			// Candidate was removed
+			playRemoveUserSound();
+		}
+
+		// Detect when someone (other than us) places a bet
+		if (currentState && state.phase === "betting") {
+			for (const newSpec of state.spectators) {
+				// Skip ourselves - we already play the sound on click
+				if (newSpec.id === mySpectatorId) continue;
+
+				const oldSpec = currentState.spectators.find((s) => s.id === newSpec.id);
+				// Play sound if bet changed (new bet or changed bet)
+				if (newSpec.bet && newSpec.bet !== oldSpec?.bet) {
+					playVoteSound();
+					break; // Only play once even if multiple bets change
+				}
+			}
+		}
+	}
+
 	mySpectatorId = spectatorId;
 	isAdmin = admin;
 	currentState = state;
@@ -95,11 +135,7 @@ const showLandingPageWithConnectFn = (): void => {
 	mySpectatorId = null;
 	isAdmin = false;
 
-	showLandingPage(
-		() => connectWithRoom(),
-		send,
-		getWebSocket,
-	);
+	showLandingPage(() => connectWithRoom(), send, getWebSocket);
 };
 
 /** Main render function wrapper */

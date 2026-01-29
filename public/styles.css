@@ -90,6 +90,20 @@ body {
 	/* Content safe area - keeps UI away from card borders */
 	padding: 100px;
 	box-sizing: border-box;
+	/* Disable text selection and dragging globally */
+	user-select: none;
+	-webkit-user-drag: none;
+}
+
+/* Disable dragging on all elements */
+* {
+	-webkit-user-drag: none;
+}
+
+/* Allow selection in inputs and textareas */
+input,
+textarea {
+	user-select: text;
 }
 
 /* App container */
